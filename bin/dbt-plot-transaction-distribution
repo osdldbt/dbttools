@@ -1,0 +1,109 @@
+#!/usr/bin/env python
+
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2010 Mark Wong
+#
+
+import sys
+from os import makedirs, system
+from os.path import exists, realpath
+
+if len(sys.argv) != 5:
+    print 'Create a distribution plot of a transaction.'
+    print 'usage: %s <transaction name> <transaction tag> <mix.log> ' % \
+            sys.argv[0]
+    print '       <output directory>'
+    print
+    print '    <transaction name> - Name of the transaction'
+    print '    <transaction tag> - ID used in the mix.log file'
+    print '    <mix.log> - full path to the mix.log file'
+    print '    <output directory> - location to write output files'
+    print
+    print 'Will attempt to create <output directory> if it does not exist.'
+    exit(1)
+
+transaction_name = sys.argv[1]
+transaction_tag = sys.argv[2]
+infilename = sys.argv[3]
+outputdir = sys.argv[4]
+
+# Make sure we can oping the file to read in data.
+try:
+    f = open(infilename, 'r')
+except:
+    print 'cannot open file: %s' % infilename
+    exit(1)
+
+# Make sure we can open the files to write to.
+
+if not exists(outputdir):
+    try:
+        # FIXME: Like I know why makedirs() fails...
+        #makedirs(outputdir)
+        system('mkdir -p %s' % outputdir)
+    except:
+        print 'cannot create directory "%s"' % outputdir
+        exit(2)
+
+outputdir = realpath(outputdir)
+
+datafilename = 't%s-distribution.data' % transaction_tag
+try:
+    d = open(outputdir + '/' + datafilename, 'w')
+except:
+    print 'cannot open file to write: %s/%s' % (outputdir, datafilename)
+    exit(3)
+    
+rfilename = 't%s-distribution.r' % transaction_tag
+try:
+    r = open(outputdir + '/' + rfilename, 'w')
+except:
+    print 'cannot open file to write: %s/%s' % (outputdir, rfilename)
+    exit(4)
+
+# Read in the data and write out the datafile for R.
+
+start_ctime = None
+
+for line in f:
+    c = line.strip().split(',')
+
+    if c[1] != transaction_tag or len(c) != 4:
+        continue
+
+    if start_ctime is None:
+        start_ctime = long(c[0])
+
+    d.write('%d %s\n' % (long(c[0]) - start_ctime, c[2]))
+
+f.close()
+d.close()
+
+# Create the R file.
+r.write('d <- read.table("%s", header = FALSE)\n' % datafilename)
+r.write('bitmap("t%s-distribution.png",\n' % transaction_tag)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V2)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V2,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "p",\n')
+r.write('     main = "%s Transaction Response Time Distribution",\n' % \
+        transaction_name)
+r.write('     xlab = "Elapsed Time (seconds)",\n')
+r.write('     ylab = "Response Time (seconds)")\n')
+r.write('grid(col = "gray")\n')
+r.close()
+
+system('(cd %s && R --slave --no-save < %s)' % (outputdir, rfilename))
