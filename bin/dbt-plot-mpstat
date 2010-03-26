@@ -1,0 +1,286 @@
+#!/usr/bin/env python
+
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2006-2010 Mark Wong
+#
+
+import sys
+from os import system
+from os.path import basename, exists, realpath
+from re import sub
+
+
+def get_r_ymax(dlist, tag):
+    index = 0
+    first = True
+    for d in dlist:
+        for key, junk in sorted(d.iteritems()):
+            if first == True:
+                ymax = 'd%s$%s' % (tag[index], key)
+                first = False
+            else:
+                ymax += ', d%s$%s' % (tag[index], key)
+        index += 1
+    return ymax
+
+
+# Format is in:
+# Device: rrqm/s wrqm/s r/s w/s rsec/s wsec/s avgrq-sz avgqu-sz await svctm
+# %util
+def parse_format_1(f, dir, sample):
+
+    # Read in the file and build up the dictionaries for each column of data
+    # from mpstat.
+
+    d_user = dict()
+    d_nice = dict()
+    d_sys = dict()
+    d_iowait = dict()
+    d_irq = dict()
+    d_soft = dict()
+    d_steal = dict()
+    d_idle = dict()
+    d_intrs = dict()
+
+    # Build a dict of dicts.
+
+    count = 0
+    for line in f:
+        c = line.split()
+
+        if len(c) != 11:
+            continue
+
+        if c[1] == 'CPU':
+            count += 1
+            continue
+
+        if c[1] != 'all':
+            processor = 'p%02d' % int(c[1])
+        else:
+            processor = c[1]
+
+        try:
+            d_user[processor][count] = c[1]
+        except:
+            d_user[processor] = dict()
+            d_user[processor][count] = c[1]
+            d_nice[processor] = dict()
+            d_sys[processor] = dict()
+            d_iowait[processor] = dict()
+            d_irq[processor] = dict()
+            d_soft[processor] = dict()
+            d_steal[processor] = dict()
+            d_idle[processor] = dict()
+            d_intrs[processor] = dict()
+        d_nice[processor][count] = c[2]
+        d_sys[processor][count] = c[3]
+        d_iowait[processor][count] = c[4]
+        d_irq[processor][count] = c[5]
+        d_soft[processor][count] = c[6]
+        d_steal[processor][count] = c[7]
+        d_idle[processor][count] = c[8]
+        d_intrs[processor][count] = c[9]
+    f.close()
+
+    write_data_file('user', d_user, dir, count, sample)
+    write_data_file('nice', d_nice, dir, count, sample)
+    write_data_file('sys', d_sys, dir, count, sample)
+    write_data_file('iowait', d_iowait, dir, count, sample)
+    write_data_file('irq', d_irq, dir, count, sample)
+    write_data_file('soft', d_soft, dir, count, sample)
+    write_data_file('steal', d_steal, dir, count, sample)
+    write_data_file('idle', d_idle, dir, count, sample)
+    write_data_file('intrs', d_intrs, dir, count, sample)
+
+    # Done reading the input file, now generate the data files for R.
+    rfile = 'mpstat.r'
+    outfile = '%s/%s' % (dir, rfile)
+    try:
+        r = open(outfile, 'w')
+    except:
+        print 'cannot open file for writing: ' + outfile
+        exit(1)
+
+    for tag in ['user', 'nice', 'sys', 'iowait', 'irq', 'soft', 'steal',
+            'idle', 'intrs' ]:
+        r.write('d%s <- read.table("mpstat-%s.data", header = TRUE)\n' % \
+                (tag, tag))
+
+    write_r_format_1(r, 'user', 'User Utilization', 'user', d_user, count,
+            'Percentage', '100')
+    write_r_legend(r, [d_user], [''])
+
+    write_r_format_1(r, 'nice', 'Nice Utilization', 'nice', d_nice, count,
+            'Percentage', '100')
+    write_r_legend(r, [d_nice], [''])
+
+    write_r_format_1(r, 'sys', 'System Utilization', 'sys', d_sys, count,
+            'Percentage', '100')
+    write_r_legend(r, [d_sys], [''])
+
+    write_r_format_1(r, 'iowait', 'I/O Wait Utilization', 'iowait', d_iowait,
+            count, 'Percentage', '100')
+    write_r_legend(r, [d_iowait], [''])
+
+    write_r_format_1(r, 'irq', 'IRQ Utilization', 'irq', d_irq, count,
+            'Percentage', '100')
+    write_r_legend(r, [d_irq], [''])
+
+    write_r_format_1(r, 'soft', 'Soft Utilization', 'soft', d_soft, count,
+            'Percentage', '100')
+    write_r_legend(r, [d_soft], [''])
+
+    write_r_format_1(r, 'steal', 'Involuntary Utilization', 'steal', d_steal,
+            count, 'Percentage', '100')
+    write_r_legend(r, [d_steal], [''])
+
+    write_r_format_1(r, 'idle', 'idle', 'idle', d_idle, count, 'Percentage',
+            '100')
+    write_r_legend(r, [d_idle], [''])
+
+    ymax = get_r_ymax([d_intrs], ['intrs'])
+    write_r_format_1(r, 'intrs', 'Interrupts Received', 'intrs', d_intrs,
+            count, 'Interrupts per Second', ymax)
+    write_r_legend(r, [d_intrs], ['intrs'])
+
+    r.write('dev.off()\n')
+
+    r.close()
+
+    system('(cd %s && R --slave --no-save < %s)' % (dir, rfile))
+
+
+# Create the data files for R.
+def write_data_file(tag, d, dir, count, sample):
+    datafilename = 'mpstat-%s.data' % tag
+    outfile = dir + '/' + datafilename
+    try:
+        f = open(outfile, 'w')
+    except:
+        print 'cannot open file for writing: ' + outfile
+        exit(1)
+
+    # Generate the header.
+    header = 'count'
+    # FIXME: Do I really have to use a junk variable to ignore stuff?
+    for key, junk in sorted(d.iteritems()):
+        header += ' %s' % key
+    f.write(header + '\n')
+
+    # Output the data.  Start at 1 instead of 0 because
+    for i in range(0, count - 1):
+        line = '%d' % (i * sample)
+        for key, v in sorted(d.iteritems()):
+            # FIXME: Need to handle if that device or iteration doesn't exist.
+            line += ' %s' % v[i]
+        f.write(line + '\n')
+    f.close()
+
+
+def write_r_format_1(r, name, title, tag, d, count, ylab, ymax):
+    processor_count = len(d)
+
+    r.write('\n')
+    r.write('max_x <-max(c(d%s$count))\n' % tag)
+    r.write('max_y <-max(%s)\n' % ymax)
+    r.write('bitmap("mpstat-%s.png",\n' \
+            '       type = "png16m",\n' \
+            '       units = "px",\n' \
+            '       width = 1280,\n' \
+            '       height = 800,\n' \
+            '       taa = 4,\n' \
+            '       gaa = 4)\n' % name)
+    r.write('color <- rainbow(%d)\n' % processor_count)
+    first = True
+    i = 1
+    # FIXME: Do I really have to use a junk variable to ignore stuff?
+    legend = ''
+    for key, junk in sorted(d.iteritems()):
+        if first:
+            r.write('plot(d%s$count,\n' % tag)
+            r.write('    y = d%s$%s,\n' % (tag, key))
+            r.write('    type = "b",\n')
+            r.write('    col = color[1],\n')
+            r.write('    pch = 1,\n')
+            r.write('    main = "%s",\n' % title)
+            r.write('    xlab = "Elapsed Time (Minutes)",\n')
+            r.write('    ylab = "%s",\n' % ylab)
+            r.write('    ylim = c(0, max_y))\n')
+            first = False
+        else:
+            r.write('points(d%s$count, d%s$%s, type = "b", ' \
+                    'col = color[%d], pch = %d)\n' % (tag, tag, key, i, i))
+        i += 1
+    r.write('grid()\n')
+
+
+def write_r_legend(r, dlist, tag):
+    count = 0
+    first = True
+    legend = ''
+    index = 0
+    for d in dlist:
+        for key, junk in sorted(d.iteritems()):
+            if first == True:
+                legend = '"%s %s"' % (key, tag[index])
+                first = False;
+            else:
+                legend += ', "%s %s"' % (key, tag[index])
+            count += 1
+        index += 1
+    r.write('legend("topright", c(%s), pch = 1:%d, col = color)\n' % \
+            (legend, count))
+
+
+argc = len(sys.argv)
+if argc != 3:
+    print 'Create plots from mpstat output.'
+    print 'usage: %s <mpstat.out> <outputdir>' % sys.argv[0]
+    print
+    print '    <mpstat.out> - full path to the mpstat.out file'
+    print '    <output directory> - location to write output files'
+    print
+    print 'Will attempt to create <output directory> if it does not exist.'
+    exit(1)
+
+infilename = sys.argv[1]
+outputdir = sys.argv[2]
+
+# Make sure we can oping the file to read in data.
+try:
+    f = open(infilename, 'r')
+except:
+    print 'cannot open file: %s' % infilename
+    exit(1)
+
+# Make sure we can open the files to write to.
+
+if not exists(outputdir):
+    try:
+        # FIXME: Like I know why makedirs() fails...
+        #makedirs(outputdir)
+        system('mkdir -p %s' % outputdir)
+    except:
+        print 'cannot create directory "%s"' % outputdir
+        exit(2)
+
+outputdir = realpath(outputdir)
+
+# First identify the format.
+format = 0
+for line in f:
+    c = line.strip().split()
+
+    if len(c) == 11 and c[1] == 'CPU':
+        format = 1
+        break;
+
+if format == 0:
+    print 'unrecognized mpstat format, exiting...'
+    exit (1)
+
+parse_format_1(f, outputdir, 60)

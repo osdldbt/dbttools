@@ -1,0 +1,170 @@
+#!/usr/bin/env python
+
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2006-2010 Mark Wong
+#
+
+import sys
+from os import makedirs, system
+from os.path import exists, realpath
+
+def parse_format_1(f, d):
+    counter = 0
+    for line in f:
+        c = line.strip().split()
+
+        if c[0] == 'procs' or c[0] == 'r':
+            continue
+
+        d.write('%d' % counter)
+        for i in c:
+            d.write(' %s' % i)
+        d.write('\n')
+        counter += 1
+
+# Format is:
+# r b swpd free buff cache si so bi bo in cs us sy id wa
+def write_r_format_1(d, r_template):
+    d.write(r_template % ('procs', 'max(d$V2)', 2, 2,
+            'Processes', 'Number of Processes'))
+    d.write('points(d$V1, y = d$V3, type = "b", pch = 2, col = color[2])\n')
+    d.write('legend("topright", ' \
+            'c("Waiting for Runtime", "Uninterruptible in Sleep"), ' \
+            'pch = 1:2, col = color)\n')
+
+    d.write(r_template % ('memory', 'max(d$V4, d$V5, d$V6, d$V7)', 4, 4,
+            'Memory', 'Blocks'))
+    d.write('points(d$V1, y = d$V5, type = "b", pch = 2, col = color[2])\n')
+    d.write('points(d$V1, y = d$V6, type = "b", pch = 3, col = color[3])\n')
+    d.write('points(d$V1, y = d$V7, type = "b", pch = 4, col = color[4])\n')
+    d.write('legend("topright", c("Swapped", "Free", "Buffered", "Cached"), ' \
+            'pch = 1:4, col = color)\n')
+
+    d.write(r_template % ('swap', 'max(d$V8, d$V9)', 2, 8,
+            'Memory Swapped in from Disk', 'Blocks'))
+    d.write('points(d$V1, y = d$V9, type = "b", pch = 2, col = color[2])\n')
+    d.write('legend("topright", c("Swapped In", "Swapped Out"), pch = 1:2,' \
+            'col = color)\n')
+
+    d.write(r_template % ('io', 'max(d$V10, d$V11)', 2, 10,
+            'Blocks Input/Output', 'Blocks per Second'))
+    d.write('points(d$V1, y = d$V11, type = "b", pch = 2, col = color[2])\n')
+    d.write('legend("topright", c("Received from Device", "Sent to Device"),' \
+            'pch = 1:2, col = color)\n')
+
+    d.write(r_template % ('in', 'max(d$V12)', 1, 12,
+            'Interrupts', 'Interrupts per Second'))
+
+    d.write(r_template % ('cs', 'max(d$V13)', 1, 13,
+            'Context Switches', 'Context Switches per Second'))
+
+    d.write(r_template % ('cpu', '100', 4, 14,
+            'Processor Utilization', 'Percentage'))
+    d.write('points(d$V1, y = d$V15, type = "b", pch = 2, col = color[2])\n')
+    d.write('points(d$V1, y = d$V16, type = "b", pch = 3, col = color[3])\n')
+    d.write('points(d$V1, y = d$V17, type = "b", pch = 4, col = color[4])\n')
+    d.write('legend("topright", c("User", "System", "Idle", "I/O Wait"), ' \
+            'pch = 1:4, col = color)\n')
+
+if len(sys.argv) != 3:
+    print 'Create plots from vmstat output.'
+    print 'usage: %s <vmstat.out> <outputdir>' % sys.argv[0]
+    print
+    print '    <vmstat.out> - full path to the vmstat.out file'
+    print '    <output directory> - location to write output files'
+    print
+    print 'Will attempt to create <output directory> if it does not exist.'
+    exit(1)
+
+infilename = sys.argv[1]
+outputdir = sys.argv[2]
+
+# Make sure we can oping the file to read in data.
+try:
+    f = open(infilename, 'r')
+except:
+    print 'cannot open file: %s' % infilename
+    exit(1)
+
+# Make sure we can open the files to write to.
+
+if not exists(outputdir):
+    try:
+        # FIXME: Like I know why makedirs() fails...
+        #makedirs(outputdir)
+        system('mkdir -p %s' % outputdir)
+    except:
+        print 'cannot create directory "%s"' % outputdir
+        exit(2)
+
+outputdir = realpath(outputdir)
+
+# Read in the data and write out the datafile for R.
+
+# First identify the format.
+format = 0
+for line in f:
+    c = line.strip().split()
+
+    if c[0] == 'r' and len(c) == 16:
+        format = 1
+        break;
+
+if format == 0:
+    print 'unrecognize vmstat format, exiting...'
+    exit (1)
+
+datafilename = 'vmstat.data'
+try:
+    d = open(outputdir + '/' + datafilename, 'w')
+except:
+    print 'cannot open file to write: %s/%s' % (outputdir, datafilename)
+    exit(3)
+    
+rfilename = 'vmstat.r'
+try:
+    r = open(outputdir + '/' + rfilename, 'w')
+except:
+    print 'cannot open file to write: %s/%s' % (outputdir, rfilename)
+    exit(4)
+
+if format == 1:
+    parse_format_1(f, d)
+
+f.close()
+d.close()
+
+# Create the R files.
+
+r_template = \
+        'bitmap("vmstat-%s.png",\n' \
+        '       type = "png16m",\n' \
+        '       units = "px",\n' \
+        '       width = 1280,\n' \
+        '       height = 800,\n' \
+        '       res = 150,\n' \
+        '       taa = 4,\n' \
+        '       gaa = 4)\n' \
+        'xmax = max(d$V1)\n' \
+        'ymax = %s\n' \
+        'color <- rainbow(%d)\n' \
+        'plot(d$V1,\n' \
+        '     d$V%d,\n' \
+        '     xlim = c(0, xmax),\n' \
+        '     ylim = c(0, ymax),\n' \
+        '     type = "b",\n' \
+        '     main = "%s",\n' \
+        '     xlab = "Elapsed Time (minutes)",\n' \
+        '     ylab = "%s",\n' \
+        '     col = color[1])\n' \
+        'grid(col = "gray")\n'
+
+r.write('d <- read.table("%s", header = FALSE)\n' % datafilename)
+if format == 1:
+    write_r_format_1(r, r_template)
+r.close()
+
+system('(cd %s && R --slave --no-save < %s)' % (outputdir, rfilename))

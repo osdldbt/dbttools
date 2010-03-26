@@ -1,0 +1,329 @@
+#!/usr/bin/env python
+
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2006-2010 Mark Wong
+#
+
+import sys
+from os import system
+from os.path import basename, exists, realpath
+from re import sub
+
+
+def get_r_ymax(dlist, tag):
+    index = 0
+    first = True
+    for d in dlist:
+        for key, junk in sorted(d.iteritems()):
+            if first == True:
+                ymax = 'd%s$%s' % (tag[index], key)
+                first = False
+            else:
+                ymax += ', d%s$%s' % (tag[index], key)
+        index += 1
+    return ymax
+
+
+# Format is in:
+# Device: rrqm/s wrqm/s r/s w/s rsec/s wsec/s avgrq-sz avgqu-sz await svctm
+# %util
+def parse_format_1(f, dir, sample, device_list):
+
+    # Read in the file and build up the dictionaries for each column of data
+    # from iostat.
+
+    d_rrqms = dict()
+    d_wrqms = dict()
+    d_rs = dict()
+    d_ws = dict()
+    d_rsecs = dict()
+    d_wsecs = dict()
+    d_avgrqsz = dict()
+    d_avgqusz = dict()
+    d_await = dict()
+    d_svctm = dict()
+    d_util = dict()
+
+    # Build a dict of dicts.  Why?  Because I fear hot swappable and nfs
+    # devices coming and going.
+
+    count = 0
+    for line in f:
+        c = line.split()
+
+        if len(c) != 12:
+            continue
+
+        if c[0] == 'Device:':
+            count += 1
+            continue
+
+        # Filter for specific devices.
+        if device_list is not None and c[0] not in device_list:
+            continue
+
+        # R doesn't like '/' or '-' characters in the name, like how the
+        # cciss driver and device mapper enumerates devices.  R will
+        # convert them to '.' so just do it here so it's consistent
+        # everywhere.
+        device = sub('/', '.', c[0])
+        device = sub('-', '.', device)
+
+        try:
+            d_rrqms[device][count] = c[1]
+        except:
+            d_rrqms[device] = dict()
+            d_rrqms[device][count] = c[1]
+            d_wrqms[device] = dict()
+            d_rs[device] = dict()
+            d_ws[device] = dict()
+            d_rsecs[device] = dict()
+            d_wsecs[device] = dict()
+            d_avgrqsz[device] = dict()
+            d_avgqusz[device] = dict()
+            d_await[device] = dict()
+            d_svctm[device] = dict()
+            d_util[device] = dict()
+        d_wrqms[device][count] = c[2]
+        d_rs[device][count] = c[3]
+        d_ws[device][count] = c[4]
+
+        # Misnomer, expecting sectors but converting to MB/s.
+        d_rsecs[device][count] = float(c[5]) * 512.0 / 1024.0 / 1024.0
+        d_wsecs[device][count] = float(c[6]) * 512.0 / 1024.0 / 1024.0
+
+        # Convert from sectors to KB.
+        d_avgrqsz[device][count] = float(c[7]) * 512.0 / 1024.0
+        d_avgqusz[device][count] = c[8]
+        d_await[device][count] = c[9]
+        d_svctm[device][count] = c[10]
+        d_util[device][count] = c[11]
+    f.close()
+
+    write_data_file('rrqms', d_rrqms, dir, count, sample)
+    write_data_file('wrqms', d_wrqms, dir, count, sample)
+    write_data_file('rs', d_rs, dir, count, sample)
+    write_data_file('ws', d_ws, dir, count, sample)
+    write_data_file('rsecs', d_rsecs, dir, count, sample)
+    write_data_file('wsecs', d_wsecs, dir, count, sample)
+    write_data_file('avgrqsz', d_avgrqsz, dir, count, sample)
+    write_data_file('avgqusz', d_avgqusz, dir, count, sample)
+    write_data_file('await', d_await, dir, count, sample)
+    write_data_file('svctm', d_svctm, dir, count, sample)
+    write_data_file('util', d_util, dir, count, sample)
+
+    # Done reading the input file, now generate the data files for R.
+    rfile = 'iostat.r'
+    outfile = '%s/%s' % (dir, rfile)
+    try:
+        r = open(outfile, 'w')
+    except:
+        print 'cannot open file for writing: ' + outfile
+        exit(1)
+
+    for tag in ['rrqms', 'wrqms', 'rs', 'ws', 'rsecs', 'wsecs',
+            'avgrqsz', 'avgqusz', 'await', 'svctm', 'util']:
+        r.write('d%s <- read.table("iostat-%s.data", header = TRUE)\n' % \
+                (tag, tag))
+
+    ymax = get_r_ymax([d_rrqms, d_wrqms], ['rrqms', 'wrqms'])
+    write_r_format_1(r, 'rqms', 'Requests Merged', 'rrqms', d_rrqms, count,
+            'Number of Requests', ymax, 2)
+    write_r_format_1_append(r, 'wrqms', d_wrqms, count, 2)
+    write_r_legend(r, [d_rrqms, d_wrqms], ['reads', 'writes'])
+
+    ymax = get_r_ymax([d_rs, d_ws], ['rs', 'ws'])
+    write_r_format_1(r, 'requests', 'I/O Requests', 'rs', d_rs, count,
+            'Number of Requests', ymax, 2)
+    write_r_format_1_append(r, 'ws', d_ws, count, 2)
+    write_r_legend(r, [d_rs, d_ws], ['reads', 'writes'])
+
+    ymax = get_r_ymax([d_rsecs, d_wsecs], ['rsecs', 'wsecs'])
+    write_r_format_1(r, 'throughput', 'Throughput', 'rsecs', d_rsecs, count,
+            'Megabytes per Second', ymax, 2)
+    write_r_format_1_append(r, 'wsecs', d_wsecs, count, 2)
+    write_r_legend(r, [d_rsecs, d_wsecs], ['reads', 'writes'])
+
+    ymax = get_r_ymax([d_avgrqsz], ['avgrqsz'])
+    write_r_format_1(r, 'avgrqsz', 'Average Request Size', 'avgrqsz',
+            d_avgrqsz, count, 'Kilobytes', ymax, 1)
+    write_r_legend(r, [d_avgrqsz], [''])
+
+    ymax = get_r_ymax([d_avgqusz], ['avgqusz'])
+    write_r_format_1(r, 'avgqusz', 'Average Queue Length', 'avgqusz',
+            d_avgqusz, count, 'Length', ymax, 1)
+    write_r_legend(r, [d_avgqusz], [''])
+
+    ymax = get_r_ymax([d_await], ['await'])
+    write_r_format_1(r, 'await', 'Average Wait Time', 'await',
+            d_await, count, 'Time (milliseconds)', ymax, 1)
+    write_r_legend(r, [d_await], [''])
+
+    ymax = get_r_ymax([d_svctm], ['svctm'])
+    write_r_format_1(r, 'svctm', 'Average Service Time', 'svctm',
+            d_svctm, count, 'Time (milliseconds)', ymax, 1)
+    write_r_legend(r, [d_svctm], [''])
+
+    write_r_format_1(r, 'util', 'Bandwidth Utilization', 'util',
+            d_util, count, 'Percentage', '100', 1)
+    write_r_legend(r, [d_util], [''])
+
+    r.write('dev.off()\n')
+
+    r.close()
+
+    system('(cd %s && R --slave --no-save < %s)' % (dir, rfile))
+
+
+# Create the data files for R.
+def write_data_file(tag, d, dir, count, sample):
+    datafilename = 'iostat-%s.data' % tag
+    outfile = dir + '/' + datafilename
+    try:
+        f = open(outfile, 'w')
+    except:
+        print 'cannot open file for writing: ' + outfile
+        exit(1)
+
+    # Generate the header.
+    header = "count "
+    # FIXME: Do I really have to use a junk variable to ignore stuff?
+    for key, junk in sorted(d.iteritems()):
+        header += key + ' '
+    f.write(header + '\n')
+
+    # Output the data.  Start at 1 instead of 0 because
+    for i in range(0, count - 1):
+        line = '%d' % (i * sample)
+        for key, v in sorted(d.iteritems()):
+            # FIXME: Need to handle if that device or iteration doesn't exist.
+            line += ' %s' % v[i]
+        f.write(line + '\n')
+    f.close()
+
+
+def write_r_format_1(r, name, title, tag, d, count, ylab, ymax, mult):
+    device_count = len(d)
+
+    r.write('\n')
+    r.write('max_x <-max(c(d%s$count))\n' % tag)
+    r.write('max_y <-max(%s)\n' % ymax)
+    r.write('bitmap("iostat-%s.png",\n' \
+            '       type = "png16m",\n' \
+            '       units = "px",\n' \
+            '       width = 1280,\n' \
+            '       height = 800,\n' \
+            '       taa = 4,\n' \
+            '       gaa = 4)\n' % name)
+    r.write('color <- rainbow(%d)\n' % (device_count * mult))
+    first = True
+    i = 1
+    # FIXME: Do I really have to use a junk variable to ignore stuff?
+    legend = ''
+    for key, junk in sorted(d.iteritems()):
+        if first:
+            r.write('plot(d%s$count,\n' % tag)
+            r.write('    y = d%s$%s,\n' % (tag, key))
+            r.write('    type = "b",\n')
+            r.write('    col = color[1],\n')
+            r.write('    pch = 1,\n')
+            r.write('    main = "%s",\n' % title)
+            r.write('    xlab = "Elapsed Time (Minutes)",\n')
+            r.write('    ylab = "%s",\n' % ylab)
+            r.write('    ylim = c(0, max_y))\n')
+            first = False
+        else:
+            r.write('points(d%s$count, d%s$%s, type = "b", ' \
+                    'col = color[%d], pch = %d)\n' % (tag, tag, key, i, i))
+        i += 1
+    r.write('grid()\n')
+
+
+def write_r_format_1_append(r, tag, d, count, num):
+    device_count = len(d)
+
+    first = True
+    i = 1
+    # FIXME: Do I really have to use a junk variable to ignore stuff?
+    legend = ''
+    for key, junk in sorted(d.iteritems()):
+        legend += ', "%s"' % key
+        r.write('points(d%s$count, d%s$%s, type = "b", ' \
+                'col = color[%d], pch = %d)\n' % \
+                (tag, tag, key, i * device_count, i * device_count))
+        i += 1
+
+
+def write_r_legend(r, dlist, tag):
+    count = 0
+    first = True
+    legend = ''
+    index = 0
+    for d in dlist:
+        for key, junk in sorted(d.iteritems()):
+            if first == True:
+                legend = '"%s %s"' % (key, tag[index])
+                first = False;
+            else:
+                legend += ', "%s %s"' % (key, tag[index])
+            count += 1
+        index += 1
+    r.write('legend("topright", c(%s), pch = 1:%d, col = color)\n' % \
+            (legend, count))
+
+
+argc = len(sys.argv)
+if argc != 3 and argc != 4:
+    print 'Create plots from iostat output.'
+    print 'usage: %s <iostat.out> <outputdir> [devices]' % sys.argv[0]
+    print
+    print '    <iostat.out> - full path to the iostat.out file'
+    print '    <output directory> - location to write output files'
+    print '    [devices] - comma delimited list of devices to plot'
+    print
+    print 'Will attempt to create <output directory> if it does not exist.'
+    exit(1)
+
+infilename = sys.argv[1]
+outputdir = sys.argv[2]
+device_list = None
+if argc == 4:
+    device_list = sys.argv[3]
+
+# Make sure we can oping the file to read in data.
+try:
+    f = open(infilename, 'r')
+except:
+    print 'cannot open file: %s' % infilename
+    exit(1)
+
+# Make sure we can open the files to write to.
+
+if not exists(outputdir):
+    try:
+        # FIXME: Like I know why makedirs() fails...
+        #makedirs(outputdir)
+        system('mkdir -p %s' % outputdir)
+    except:
+        print 'cannot create directory "%s"' % outputdir
+        exit(2)
+
+outputdir = realpath(outputdir)
+
+# First identify the format.
+format = 0
+for line in f:
+    c = line.strip().split()
+
+    if len(c) == 12 and c[0] == 'Device:':
+        format = 1
+        break;
+
+if format == 0:
+    print 'unrecognized iostat format, exiting...'
+    exit (1)
+
+parse_format_1(f, outputdir, 60, device_list)
