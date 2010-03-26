@@ -1,0 +1,223 @@
+#!/usr/bin/env python
+
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2010 Mark Wong
+#
+
+"""
+This script assumes the output is in this format:
+
+SELECT TRANSACTION_TIMESTAMP(), datname, numbackends, xact_commit,
+       xact_rollback, blks_read, blks_hit
+FROM pg_stat_database
+"""
+
+import sys
+from os import makedirs, system
+from os.path import exists, realpath
+
+if len(sys.argv) != 4:
+    print 'usage: %s <filename> <dbname> <outputdirectory>' % sys.argv[0]
+    print
+    print '    <filename> - full path to the datafile file'
+    print '    <dbname> - name of database to plot stats for'
+    print '    <output directory> - location to write output files'
+    print
+    print 'Will attempt to create <output directory> if it does not exist.'
+    exit(1)
+
+infilename = sys.argv[1]
+dbname = sys.argv[2]
+outputdir = sys.argv[3]
+
+# Make sure we can oping the file to read in data.
+try:
+    f = open(infilename, 'r')
+except:
+    print 'cannot open file: %s' % infilename
+    exit(1)
+
+# Make sure we can open the files to write to.
+
+if not exists(outputdir):
+    try:
+        makedirs(outputdir)
+    except:
+        print 'cannot create directory "%s"' % outputdir
+        exit(2)
+
+outputdir = realpath(outputdir)
+
+datafilename = 'db-stats-%s.data' % dbname
+try:
+    d = open(outputdir + '/' + datafilename, 'w')
+except:
+    print 'cannot open file to write: %s/%s' % (outputdir, datafilename)
+    exit(3)
+    
+rfilename = 'db-stats-%s.r' % dbname
+try:
+    r = open(outputdir + '/' + rfilename, 'w')
+except:
+    print 'cannot open file to write: %s/%s' % (outputdir, rfilename)
+    exit(4)
+
+# Read in the data and write out the datafile for R.
+
+counter = 0
+
+numbackends = None
+xact_commit_old = None
+xact_rollback_old = None
+blks_read_old = None
+blks_hit_old = None
+
+xact_commit_new = None
+xact_rollback_new = None
+blks_read_new = None
+blks_hit_new = None
+
+for line in f:
+    c = line.strip().split('|')
+
+    if len(c) != 7:
+        continue
+
+    if c[1] != dbname:
+        continue
+
+    numbackends = long(c[2])
+    xact_commit_new = long(c[3])
+    xact_rollback_new = long(c[4])
+    blks_read_new = long(c[5])
+    blks_hit_new = long(c[6])
+
+    try:
+        d.write('%d %d %d %d %d %d\n' % (counter,
+                numbackends,
+                xact_commit_new - xact_commit_old,
+                xact_rollback_new - xact_rollback_old,
+                blks_read_new - blks_read_old, blks_hit_new - blks_hit_old))
+    except:
+        # Instead of checking if the old values have been set, just trap for a
+        # math error and don't do anything.
+        pass
+
+    xact_commit_old = xact_commit_new
+    xact_rollback_old = xact_rollback_new
+    blks_read_old = blks_read_new
+    blks_hit_old = blks_hit_new
+
+    counter += 1
+
+f.close()
+d.close()
+
+# Create the R file.
+r.write('d <- read.table("%s", header = FALSE)\n' % datafilename)
+r.write('\n')
+r.write('bitmap("db-stats-%s-connections.png",\n' % dbname)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V2)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V2,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Database Connections (%s)",\n' % dbname)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Backends")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("db-stats-%s-commits.png",\n' % dbname)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V3)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V3,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Committed Transactions (%s)",\n' % dbname)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Commits")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("db-stats-%s-rollbacks.png",\n' % dbname)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V4)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V4,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Rolledback Transactions (%s)",\n' % dbname)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Rollbacks")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("db-stats-%s-blocks-read.png",\n' % dbname)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V5)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V5,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Blocks Read (%s)",\n' % dbname)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Blocks")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("db-stats-%s-blocks-hit.png",\n' % dbname)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V6)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V6,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Blocks Hit (%s)",\n' % dbname)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Blocks")\n')
+r.write('grid()\n')
+r.close()
+
+system('(cd %s && R --slave --no-save < %s)' % (outputdir, rfilename))

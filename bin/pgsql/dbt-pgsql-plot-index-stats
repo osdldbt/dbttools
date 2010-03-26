@@ -1,0 +1,242 @@
+#!/usr/bin/env python
+
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2010 Mark Wong
+#
+
+"""
+This script assumes the output is in this format:
+
+SELECT TRANSACTION_TIMESTAMP(), a.schemaname, a.relname, a.indexrelname,
+       idx_scan, idx_tup_read, idx_tup_fetch, idx_blks_read, idx_blks_hit
+FROM pg_stat_all_indexes a, pg_statio_all_indexes b
+WHERE a.indexrelid = b.indexrelid;
+"""
+
+import sys
+from os import makedirs, system
+from os.path import exists, realpath
+
+if len(sys.argv) != 4:
+    print 'usage: %s <filename> <indexname> <outputdirectory>' % sys.argv[0]
+    print
+    print '    <filename> - full path to the datafile file'
+    print '    <indexname> - name of the table to plot stats for'
+    print '    <output directory> - location to write output files'
+    print
+    print 'Will attempt to create <output directory> if it does not exist.'
+    exit(1)
+
+infilename = sys.argv[1]
+indexname = sys.argv[2]
+outputdir = sys.argv[3]
+
+# Make sure we can oping the file to read in data.
+try:
+    f = open(infilename, 'r')
+except:
+    print 'cannot open file: %s' % infilename
+    exit(1)
+
+# Make sure we can open the files to write to.
+
+if not exists(outputdir):
+    try:
+        makedirs(outputdir)
+    except:
+        print 'cannot create directory "%s"' % outputdir
+        exit(2)
+
+outputdir = realpath(outputdir)
+
+datafilename = 'index-stat-%s.data' % indexname
+try:
+    d = open(outputdir + '/' + datafilename, 'w')
+except:
+    print 'cannot open file to write: %s/%s' % (outputdir, datafilename)
+    exit(3)
+    
+rfilename = 'index-stat-%s.r' % indexname
+try:
+    r = open(outputdir + '/' + rfilename, 'w')
+except:
+    print 'cannot open file to write: %s/%s' % (outputdir, rfilename)
+    exit(4)
+
+# Read in the data and write out the datafile for R.
+
+counter = 0
+
+idx_scan_old = None
+idx_tup_read_old = None
+idx_tup_fetch_old = None
+idx_blks_read_old = None
+idx_blks_hit_old = None
+
+idx_tup_read_new = None
+idx_tup_fetch_new = None
+idx_blks_read_new = None
+idx_blks_hit_new = None
+
+for line in f:
+    c = line.strip().split('|')
+
+    if len(c) != 9:
+        continue
+
+    if c[3] != indexname:
+        continue
+
+    try:
+        idx_scan_new = long(c[4])
+    except:
+        idx_scan_new = long(0)
+    try:
+        idx_tup_read_new = long(c[5])
+    except:
+        idx_tup_read_new = long(0)
+    try:
+        idx_tup_fetch_new = long(c[6])
+    except:
+        idx_tup_fetch_new = long(0)
+    try:
+        idx_blks_read_new = long(c[7])
+    except:
+        idx_blks_read_new = long(0)
+    try:
+        idx_blks_hit_new = long(c[8])
+    except:
+        idx_blks_hit_new = long(0)
+
+    try:
+        d.write('%d %d %d %d %d %d\n' % (
+                counter,
+                idx_scan_new - idx_scan_old,
+                idx_tup_read_new - idx_tup_read_old,
+                idx_tup_fetch_new - idx_tup_fetch_old,
+                idx_blks_read_new - idx_blks_read_old,
+                idx_blks_hit_new - idx_blks_hit_old))
+    except:
+        # Instead of checking if the old values have been set, just trap for a
+        # math error and don't do anything.
+        pass
+
+    idx_scan_old = idx_scan_new
+    idx_tup_read_old = idx_tup_read_new
+    idx_tup_fetch_old = idx_tup_fetch_new
+    idx_blks_read_old = idx_blks_read_new
+    idx_blks_hit_old = idx_blks_hit_new
+
+    counter += 1
+
+f.close()
+d.close()
+
+# Create the R file.
+r.write('d <- read.table("%s", header = FALSE)\n' % datafilename)
+r.write('\n')
+r.write('bitmap("index-stat-%s-idx_scan.png",\n' % indexname)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V2)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V2,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Index Scans (%s)",\n' % indexname)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Scans")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("index-stat-%s-idx_tup_read.png",\n' % indexname)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V3)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V3,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Tuples Read (%s)",\n' % indexname)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Tuples")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("index-stat-%s-idx_tup_fetch.png",\n' % indexname)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V4)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V4,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Tuples Fetched (%s)",\n' % indexname)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Tuples")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("index-stat-%s-idx_blks_read.png",\n' % indexname)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V5)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V5,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Index Blocks Read (%s)",\n' % indexname)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Blocks")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("index-stat-%s-idx_blks_hit.png",\n' % indexname)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V6)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V6,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Index Blocks Hit (%s)",\n' % indexname)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Tuples")\n')
+r.write('grid()\n')
+r.close()
+
+system('(cd %s && R --slave --no-save < %s)' % (outputdir, rfilename))

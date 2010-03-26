@@ -1,0 +1,530 @@
+#!/usr/bin/env python
+
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2010 Mark Wong
+#
+
+"""
+This script assumes the output is in this format:
+
+SELECT TRANSACTION_TIMESTAMP(), a.schemaname, a.relname, seq_scan, seq_tup_read,
+       idx_scan, idx_tup_fetch, n_tup_ins, n_tup_upd, n_tup_del, n_tup_hot_upd,
+       n_live_tup, n_dead_tup, heap_blks_read, heap_blks_hit, idx_blks_read,
+       idx_blks_hit, toast_blks_read, toast_blks_hit, tidx_blks_read,
+       tidx_blks_hit
+FROM pg_statio_all_tables a, pg_stat_all_tables b
+WHERE a.relid = b.relid;
+"""
+
+import sys
+from os import makedirs, system
+from os.path import exists, realpath
+
+if len(sys.argv) != 4:
+    print 'usage: %s <filename> <tablename> <outputdirectory>' % sys.argv[0]
+    print
+    print '    <filename> - full path to the datafile file'
+    print '    <tablename> - name of the table to plot stats for'
+    print '    <output directory> - location to write output files'
+    print
+    print 'Will attempt to create <output directory> if it does not exist.'
+    exit(1)
+
+infilename = sys.argv[1]
+tablename = sys.argv[2]
+outputdir = sys.argv[3]
+
+# Make sure we can oping the file to read in data.
+try:
+    f = open(infilename, 'r')
+except:
+    print 'cannot open file: %s' % infilename
+    exit(1)
+
+# Make sure we can open the files to write to.
+
+if not exists(outputdir):
+    try:
+        makedirs(outputdir)
+    except:
+        print 'cannot create directory "%s"' % outputdir
+        exit(2)
+
+outputdir = realpath(outputdir)
+
+datafilename = 'table-stat-%s.data' % tablename
+try:
+    d = open(outputdir + '/' + datafilename, 'w')
+except:
+    print 'cannot open file to write: %s/%s' % (outputdir, datafilename)
+    exit(3)
+    
+rfilename = 'table-stat-%s.r' % tablename
+try:
+    r = open(outputdir + '/' + rfilename, 'w')
+except:
+    print 'cannot open file to write: %s/%s' % (outputdir, rfilename)
+    exit(4)
+
+# Read in the data and write out the datafile for R.
+
+counter = 0
+
+seq_scan_old = None
+seq_tup_read_old = None
+idx_scan_old = None
+idx_tup_fetch_old = None
+n_tup_ins_old = None
+n_tup_upd_old = None
+n_tup_del_old = None
+n_tup_hot_upd_old = None
+n_live_tup_old = None
+n_dead_tup_old = None
+heap_blks_read_old = None
+heap_blks_hit_old = None
+idx_blks_read_old = None
+idx_blks_hit_old = None
+toast_blks_read_old = None
+toast_blks_hit_old = None
+tidx_blks_read_old = None
+tidx_blks_hit_old = None
+
+seq_scan_new = None
+seq_tup_read_new = None
+idx_scan_new = None
+idx_tup_fetch_new = None
+n_tup_ins_new = None
+n_tup_upd_new = None
+n_tup_del_new = None
+n_tup_hot_upd_new = None
+n_live_tup_new = None
+n_dead_tup_new = None
+heap_blks_read_new = None
+heap_blks_hit_new = None
+idx_blks_read_new = None
+idx_blks_hit_new = None
+toast_blks_read_new = None
+toast_blks_hit_new = None
+tidx_blks_read_new = None
+tidx_blks_hit_new = None
+
+for line in f:
+    c = line.strip().split('|')
+
+    if len(c) != 21:
+        continue
+
+    if c[2] != tablename:
+        continue
+
+    try:
+        seq_scan_new = long(c[3])
+    except:
+        seq_scan_new = long(0)
+    try:
+        seq_tup_read_new = long(c[4])
+    except:
+        seq_tup_read_new = long(0)
+    try:
+        idx_scan_new = long(c[5])
+    except:
+        idx_scan_new = long(0)
+    try:
+        idx_tup_fetch_new = long(c[6])
+    except:
+        idx_tup_fetch_new = long(0)
+    try:
+        n_tup_ins_new = long(c[7])
+    except:
+        n_tup_ins_new = long(0)
+    try:
+        n_tup_upd_new = long(c[8])
+    except:
+        n_tup_upd_new = long(0)
+    try:
+        n_tup_del_new = long(c[9])
+    except:
+        n_tup_del_new = long(0)
+    try:
+        n_tup_hot_upd_new = long(c[10])
+    except:
+        n_tup_hot_upd_new = long(0)
+    try:
+        n_live_tup_new = long(c[11])
+    except:
+        n_live_tup_new = long(0)
+    try:
+        n_dead_tup_new = long(c[12])
+    except:
+        n_dead_tup_new = long(0)
+    try:
+        heap_blks_read_new = long(c[13])
+    except:
+        heap_blks_read_new = long(0)
+    try:
+        heap_blks_hit_new = long(c[14])
+    except:
+        heap_blks_hit_new = long(0)
+    try:
+        idx_blks_read_new = long(c[15])
+    except:
+        idx_blks_read_new = long(0)
+    try:
+        idx_blks_hit_new = long(c[16])
+    except:
+        idx_blks_hit_new = long(0)
+    try:
+        toast_blks_read_new = long(c[17])
+    except:
+        toast_blks_read_new = long(0)
+    try:
+        toast_blks_hit_new = long(c[18])
+    except:
+        toast_blks_hit_new = long(0)
+    try:
+        tidx_blks_read_new = long(c[19])
+    except:
+        tidx_blks_read_new = long(0)
+    try:
+        tidx_blks_hit_new = long(c[20])
+    except:
+        tidx_blks_hit_new = long(0)
+
+    try:
+        d.write('%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n' % (
+                counter,
+                seq_scan_new - seq_scan_old,
+                seq_tup_read_new - seq_tup_read_old,
+                idx_scan_new - idx_scan_old,
+                idx_tup_fetch_new - idx_tup_fetch_old,
+                n_tup_ins_new - n_tup_ins_old,
+                n_tup_upd_new - n_tup_upd_old,
+                n_tup_del_new - n_tup_del_old,
+                n_tup_hot_upd_new - n_tup_hot_upd_old,
+                n_live_tup_new - n_live_tup_old,
+                n_dead_tup_new - n_dead_tup_old,
+                heap_blks_read_new - heap_blks_read_old,
+                heap_blks_hit_new - heap_blks_hit_old,
+                idx_blks_read_new - idx_blks_read_old,
+                idx_blks_hit_new - idx_blks_hit_old,
+                toast_blks_read_new - toast_blks_read_old,
+                toast_blks_hit_new - toast_blks_hit_old,
+                tidx_blks_read_new - tidx_blks_read_old,
+                tidx_blks_hit_new - tidx_blks_hit_old))
+    except:
+        # Instead of checking if the old values have been set, just trap for a
+        # math error and don't do anything.
+        pass
+
+    seq_scan_old = seq_scan_new
+    seq_tup_read_old = seq_tup_read_new
+    idx_scan_old = idx_scan_new
+    idx_tup_fetch_old = idx_tup_fetch_new
+    n_tup_ins_old = n_tup_ins_new
+    n_tup_upd_old = n_tup_upd_new
+    n_tup_del_old = n_tup_del_new
+    n_tup_hot_upd_old = n_tup_hot_upd_new
+    n_live_tup_old = n_live_tup_new
+    n_dead_tup_old = n_dead_tup_new
+    heap_blks_read_old = heap_blks_read_new
+    heap_blks_hit_old = heap_blks_hit_new
+    idx_blks_read_old = idx_blks_read_new
+    idx_blks_hit_old = idx_blks_hit_new
+    toast_blks_read_old = toast_blks_read_new
+    toast_blks_hit_old = toast_blks_hit_new
+    tidx_blks_read_old = tidx_blks_read_new
+    tidx_blks_hit_old = tidx_blks_hit_new
+
+    counter += 1
+
+f.close()
+d.close()
+
+# Create the R file.
+r.write('d <- read.table("%s", header = FALSE)\n' % datafilename)
+r.write('\n')
+r.write('bitmap("table-stat-%s-seq_scan.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V2)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V2,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Sequential Scans (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Sequential Scans")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-seq_tup_read.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V3)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V3,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Tuples Read by Sequential Scan (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Tuples")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-idx_scan.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V4)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V4,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Index Scans (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Index Scans")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-idx_tup_fetch.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V5)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V5,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Tuples Read by Index Scans (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Tuples")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-n_tup_ins.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V6)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V6,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Inserts (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Tuples")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-n_tup_upd.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V7)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V7,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Updates (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Tuples")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-n_tup_del.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V8)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V8,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Deletes (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Tuples")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-n_tup_hot_upd.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V9)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V9,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "HOT Updates (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Tuples")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-n_live_tup.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V10)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V10,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Live Tuples (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Tuples")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-n_dead_tup.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V11)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V11,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Dead Tuples (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Tuples")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-heap_blks_read.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V12)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V12,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Heap Blocks Read (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Blocks")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-heap_blks_hit.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V13)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V13,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Heap Blocks Read (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Blocks")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-idx_blks_read.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V14)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V14,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Index Blocks Read (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Blocks")\n')
+r.write('grid()\n')
+r.write('\n')
+r.write('bitmap("table-stat-%s-idx_blks_hit.png",\n' % tablename)
+r.write('       type = "png16m",\n')
+r.write('       units = "px",\n')
+r.write('       width = 1280,\n')
+r.write('       height = 800,\n')
+r.write('       res = 150,\n')
+r.write('       taa = 4,\n')
+r.write('       gaa = 4)\n')
+r.write('xmax = max(d$V1)\n')
+r.write('ymax = max(d$V15)\n')
+r.write('plot(d$V1,\n')
+r.write('     d$V15,\n')
+r.write('     xlim = c(0, xmax),\n')
+r.write('     ylim = c(0, ymax),\n')
+r.write('     type = "b",\n')
+r.write('     main = "Index Blocks Hit (%s)",\n' % tablename)
+r.write('     xlab = "Elapsed Time (minutes)",\n')
+r.write('     ylab = "Number of Blocks")\n')
+r.write('grid()\n')
+r.close()
+
+system('(cd %s && R --slave --no-save < %s)' % (outputdir, rfilename))
