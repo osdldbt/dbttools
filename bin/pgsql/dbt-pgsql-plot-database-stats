@@ -74,16 +74,30 @@ xact_commit_old = None
 xact_rollback_old = None
 blks_read_old = None
 blks_hit_old = None
+# The following are for versions 8.3 and newer.
+tup_returned_old = None
+tup_fetched_old = None
+tup_inserted_old = None
+tup_updated_old = None
+tup_deleted_old = None
+
 
 xact_commit_new = None
 xact_rollback_new = None
 blks_read_new = None
 blks_hit_new = None
+# The following are for versions 8.3 and newer.
+tup_returned_new = None
+tup_fetched_new = None
+tup_inserted_new = None
+tup_updated_new = None
+tup_deleted_new = None
 
+pg_version = 8.2
 for line in f:
     c = line.strip().split('|')
 
-    if len(c) != 7:
+    if len(c) != 7 and len(c) != 12:
         continue
 
     if c[1] != dbname:
@@ -94,13 +108,34 @@ for line in f:
     xact_rollback_new = long(c[4])
     blks_read_new = long(c[5])
     blks_hit_new = long(c[6])
+    if (len(c) == 12):
+        pg_version = 8.3
+        tup_returned_new = long(c[6])
+        tup_fetched_new = long(c[7])
+        tup_inserted_new = long(c[8])
+        tup_updated_new = long(c[9])
+        tup_deleted_new = long(c[10])
 
     try:
-        d.write('%d %d %d %d %d %d\n' % (counter,
-                numbackends,
-                xact_commit_new - xact_commit_old,
-                xact_rollback_new - xact_rollback_old,
-                blks_read_new - blks_read_old, blks_hit_new - blks_hit_old))
+        if (len(c) == 7):
+            d.write('%d %d %d %d %d %d\n' % (counter,
+                    numbackends,
+                    xact_commit_new - xact_commit_old,
+                    xact_rollback_new - xact_rollback_old,
+                    blks_read_new - blks_read_old,
+                    blks_hit_new - blks_hit_old))
+        elif (len(c) == 12):
+            d.write('%d %d %d %d %d %d %d %d %d %d %d\n' % (counter,
+                    numbackends,
+                    xact_commit_new - xact_commit_old,
+                    xact_rollback_new - xact_rollback_old,
+                    blks_read_new - blks_read_old,
+                    blks_hit_new - blks_hit_old,
+                    tup_returned_new - tup_returned_old,
+                    tup_fetched_new - tup_fetched_old,
+                    tup_inserted_new- tup_inserted_old,
+                    tup_updated_new - tup_updated_old,
+                    tup_deleted_new - tup_deleted_old))
     except:
         # Instead of checking if the old values have been set, just trap for a
         # math error and don't do anything.
@@ -110,6 +145,12 @@ for line in f:
     xact_rollback_old = xact_rollback_new
     blks_read_old = blks_read_new
     blks_hit_old = blks_hit_new
+    if (len(c) == 12):
+        tup_returned_old = tup_returned_new
+        tup_fetched_old = tup_fetched_new
+        tup_inserted_old = tup_inserted_new
+        tup_updated_old = tup_updated_new
+        tup_deleted_old = tup_deleted_new
 
     counter += 1
 
@@ -218,6 +259,107 @@ r.write('     main = "Blocks Hit (%s)",\n' % dbname)
 r.write('     xlab = "Elapsed Time (minutes)",\n')
 r.write('     ylab = "Blocks")\n')
 r.write('grid()\n')
+if pg_version >= 8.3:
+    r.write('\n')
+    r.write('bitmap("db-stats-%s-tup_returned.png",\n' % dbname)
+    r.write('       type = "png16m",\n')
+    r.write('       units = "px",\n')
+    r.write('       width = 1280,\n')
+    r.write('       height = 800,\n')
+    r.write('       res = 150,\n')
+    r.write('       taa = 4,\n')
+    r.write('       gaa = 4)\n')
+    r.write('xmax = max(d$V1)\n')
+    r.write('ymax = max(d$V7)\n')
+    r.write('plot(d$V1,\n')
+    r.write('     d$V7,\n')
+    r.write('     xlim = c(0, xmax),\n')
+    r.write('     ylim = c(0, ymax),\n')
+    r.write('     type = "b",\n')
+    r.write('     main = "Tuples Returned (%s)",\n' % dbname)
+    r.write('     xlab = "Elapsed Time (minutes)",\n')
+    r.write('     ylab = "Tuples")\n')
+    r.write('grid()\n')
+    r.write('\n')
+    r.write('bitmap("db-stats-%s-tup_fetched.png",\n' % dbname)
+    r.write('       type = "png16m",\n')
+    r.write('       units = "px",\n')
+    r.write('       width = 1280,\n')
+    r.write('       height = 800,\n')
+    r.write('       res = 150,\n')
+    r.write('       taa = 4,\n')
+    r.write('       gaa = 4)\n')
+    r.write('xmax = max(d$V1)\n')
+    r.write('ymax = max(d$V8)\n')
+    r.write('plot(d$V1,\n')
+    r.write('     d$V8,\n')
+    r.write('     xlim = c(0, xmax),\n')
+    r.write('     ylim = c(0, ymax),\n')
+    r.write('     type = "b",\n')
+    r.write('     main = "Tuples Fetched (%s)",\n' % dbname)
+    r.write('     xlab = "Elapsed Time (minutes)",\n')
+    r.write('     ylab = "Tuples")\n')
+    r.write('grid()\n')
+    r.write('\n')
+    r.write('bitmap("db-stats-%s-tup_inserted.png",\n' % dbname)
+    r.write('       type = "png16m",\n')
+    r.write('       units = "px",\n')
+    r.write('       width = 1280,\n')
+    r.write('       height = 800,\n')
+    r.write('       res = 150,\n')
+    r.write('       taa = 4,\n')
+    r.write('       gaa = 4)\n')
+    r.write('xmax = max(d$V1)\n')
+    r.write('ymax = max(d$V9)\n')
+    r.write('plot(d$V1,\n')
+    r.write('     d$V9,\n')
+    r.write('     xlim = c(0, xmax),\n')
+    r.write('     ylim = c(0, ymax),\n')
+    r.write('     type = "b",\n')
+    r.write('     main = "Tuples Inserted (%s)",\n' % dbname)
+    r.write('     xlab = "Elapsed Time (minutes)",\n')
+    r.write('     ylab = "Tuples")\n')
+    r.write('grid()\n')
+    r.write('\n')
+    r.write('bitmap("db-stats-%s-tup_updated.png",\n' % dbname)
+    r.write('       type = "png16m",\n')
+    r.write('       units = "px",\n')
+    r.write('       width = 1280,\n')
+    r.write('       height = 800,\n')
+    r.write('       res = 150,\n')
+    r.write('       taa = 4,\n')
+    r.write('       gaa = 4)\n')
+    r.write('xmax = max(d$V1)\n')
+    r.write('ymax = max(d$V10)\n')
+    r.write('plot(d$V1,\n')
+    r.write('     d$V10,\n')
+    r.write('     xlim = c(0, xmax),\n')
+    r.write('     ylim = c(0, ymax),\n')
+    r.write('     type = "b",\n')
+    r.write('     main = "Tuples Updated (%s)",\n' % dbname)
+    r.write('     xlab = "Elapsed Time (minutes)",\n')
+    r.write('     ylab = "Tuples")\n')
+    r.write('grid()\n')
+    r.write('\n')
+    r.write('bitmap("db-stats-%s-type_deleted.png",\n' % dbname)
+    r.write('       type = "png16m",\n')
+    r.write('       units = "px",\n')
+    r.write('       width = 1280,\n')
+    r.write('       height = 800,\n')
+    r.write('       res = 150,\n')
+    r.write('       taa = 4,\n')
+    r.write('       gaa = 4)\n')
+    r.write('xmax = max(d$V1)\n')
+    r.write('ymax = max(d$V11)\n')
+    r.write('plot(d$V1,\n')
+    r.write('     d$V11,\n')
+    r.write('     xlim = c(0, xmax),\n')
+    r.write('     ylim = c(0, ymax),\n')
+    r.write('     type = "b",\n')
+    r.write('     main = "Tuples Deleted (%s)",\n' % dbname)
+    r.write('     xlab = "Elapsed Time (minutes)",\n')
+    r.write('     ylab = "Tuples")\n')
+    r.write('grid()\n')
 r.close()
 
 system('(cd %s && R --slave --no-save < %s)' % (outputdir, rfilename))
