@@ -11,7 +11,7 @@ import sys
 from os import makedirs, system
 from os.path import exists, realpath
 
-if len(sys.argv) != 5:
+if len(sys.argv) not in [5, 7]:
     print 'Create a distribution plot of a transaction.'
     print 'usage: %s <transaction name> <transaction tag> <mix.log> ' % \
             sys.argv[0]
@@ -29,6 +29,14 @@ transaction_name = sys.argv[1]
 transaction_tag = sys.argv[2]
 infilename = sys.argv[3]
 outputdir = sys.argv[4]
+
+# Secret optional color arguments for R.
+try:
+    num_colors = sys.argv[5]
+    color = sys.argv[6]
+except:
+    num_colors = None
+    color = None
 
 # Make sure we can oping the file to read in data.
 try:
@@ -92,6 +100,8 @@ r.write('       height = 800,\n')
 r.write('       res = 150,\n')
 r.write('       taa = 4,\n')
 r.write('       gaa = 4)\n')
+if num_colors is not None:
+    r.write('       color <- rainbow(%s)\n' % num_colors)
 r.write('xmax = max(d$V1)\n')
 r.write('ymax = max(d$V2)\n')
 r.write('plot(d$V1,\n')
@@ -99,6 +109,8 @@ r.write('     d$V2,\n')
 r.write('     xlim = c(0, xmax),\n')
 r.write('     ylim = c(0, ymax),\n')
 r.write('     type = "p",\n')
+if num_colors is not None and color is not None:
+    r.write('     col = color[%s],\n' % color)
 r.write('     main = "%s Transaction Response Time Distribution",\n' % \
         transaction_name)
 r.write('     xlab = "Elapsed Time (seconds)",\n')
