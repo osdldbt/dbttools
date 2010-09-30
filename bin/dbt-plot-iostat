@@ -12,6 +12,9 @@ from os import system
 from os.path import basename, exists, realpath
 from re import sub
 
+# R can only handle pch from 1-25.  Use modulo to recycle and reuse the
+# symbols.
+max_pch = 25
 
 def get_r_ymax(dlist, tag):
     index = 0
@@ -30,7 +33,7 @@ def get_r_ymax(dlist, tag):
 # Format is in:
 # Device: rrqm/s wrqm/s r/s w/s rsec/s wsec/s avgrq-sz avgqu-sz await svctm
 # %util
-def parse_format_1(f, dir, sample, device_list):
+def parse_format_1(f, dir, device_list):
 
     # Read in the file and build up the dictionaries for each column of data
     # from iostat.
@@ -103,17 +106,17 @@ def parse_format_1(f, dir, sample, device_list):
         d_util[device][count] = c[11]
     f.close()
 
-    write_data_file('rrqms', d_rrqms, dir, count, sample)
-    write_data_file('wrqms', d_wrqms, dir, count, sample)
-    write_data_file('rs', d_rs, dir, count, sample)
-    write_data_file('ws', d_ws, dir, count, sample)
-    write_data_file('rsecs', d_rsecs, dir, count, sample)
-    write_data_file('wsecs', d_wsecs, dir, count, sample)
-    write_data_file('avgrqsz', d_avgrqsz, dir, count, sample)
-    write_data_file('avgqusz', d_avgqusz, dir, count, sample)
-    write_data_file('await', d_await, dir, count, sample)
-    write_data_file('svctm', d_svctm, dir, count, sample)
-    write_data_file('util', d_util, dir, count, sample)
+    write_data_file('rrqms', d_rrqms, dir, count)
+    write_data_file('wrqms', d_wrqms, dir, count)
+    write_data_file('rs', d_rs, dir, count)
+    write_data_file('ws', d_ws, dir, count)
+    write_data_file('rsecs', d_rsecs, dir, count)
+    write_data_file('wsecs', d_wsecs, dir, count)
+    write_data_file('avgrqsz', d_avgrqsz, dir, count)
+    write_data_file('avgqusz', d_avgqusz, dir, count)
+    write_data_file('await', d_await, dir, count)
+    write_data_file('svctm', d_svctm, dir, count)
+    write_data_file('util', d_util, dir, count)
 
     # Done reading the input file, now generate the data files for R.
     rfile = 'iostat.r'
@@ -179,7 +182,7 @@ def parse_format_1(f, dir, sample, device_list):
 
 
 # Create the data files for R.
-def write_data_file(tag, d, dir, count, sample):
+def write_data_file(tag, d, dir, count):
     datafilename = 'iostat-%s.data' % tag
     outfile = dir + '/' + datafilename
     try:
@@ -197,7 +200,7 @@ def write_data_file(tag, d, dir, count, sample):
 
     # Output the data.  Start at 1 instead of 0 because
     for i in range(0, count - 1):
-        line = '%d' % (i * sample)
+        line = '%d' % (i + 1)
         for key, v in sorted(d.iteritems()):
             # FIXME: Need to handle if that device or iteration doesn't exist.
             line += ' %s' % v[i]
@@ -222,13 +225,12 @@ def write_r_format_1(r, name, title, tag, d, count, ylab, ymax, mult):
     first = True
     i = 1
     # FIXME: Do I really have to use a junk variable to ignore stuff?
-    legend = ''
     for key, junk in sorted(d.iteritems()):
         if first:
             r.write('plot(d%s$count,\n' % tag)
             r.write('    y = d%s$%s,\n' % (tag, key))
             r.write('    type = "b",\n')
-            r.write('    col = color[1],\n')
+            r.write('    col = color[%d],\n' % i)
             r.write('    pch = 1,\n')
             r.write('    main = "%s",\n' % title)
             r.write('    xlab = "Elapsed Time (Minutes)",\n')
@@ -237,24 +239,20 @@ def write_r_format_1(r, name, title, tag, d, count, ylab, ymax, mult):
             first = False
         else:
             r.write('points(d%s$count, d%s$%s, type = "b", ' \
-                    'col = color[%d], pch = %d)\n' % (tag, tag, key, i, i))
+                    'col = color[%d], pch = %d)\n' % \
+                    (tag, tag, key, i, ((i - 1) % max_pch + 1)))
         i += 1
     r.write('grid()\n')
 
 
 def write_r_format_1_append(r, tag, d, count, num):
-    device_count = len(d)
-
-    first = True
-    i = 1
+    i = len(d)
     # FIXME: Do I really have to use a junk variable to ignore stuff?
-    legend = ''
     for key, junk in sorted(d.iteritems()):
-        legend += ', "%s"' % key
+        i += 1
         r.write('points(d%s$count, d%s$%s, type = "b", ' \
                 'col = color[%d], pch = %d)\n' % \
-                (tag, tag, key, i * device_count, i * device_count))
-        i += 1
+                (tag, tag, key, i, ((i - 1) % max_pch + 1)))
 
 
 def write_r_legend(r, dlist, tag):
@@ -262,17 +260,20 @@ def write_r_legend(r, dlist, tag):
     first = True
     legend = ''
     index = 0
+    pch = ''
     for d in dlist:
         for key, junk in sorted(d.iteritems()):
             if first == True:
                 legend = '"%s %s"' % (key, tag[index])
                 first = False;
+                pch = '%d' % (count + 1)
             else:
                 legend += ', "%s %s"' % (key, tag[index])
+                pch += ', %d' % ((count + 1) % max_pch + 1)
             count += 1
         index += 1
-    r.write('legend("topright", c(%s), pch = 1:%d, col = color)\n' % \
-            (legend, count))
+    r.write('legend("topright", c(%s), pch = c(%s), col = color)\n' % \
+            (legend, pch))
 
 
 argc = len(sys.argv)
@@ -326,4 +327,4 @@ if format == 0:
     print 'unrecognized iostat format, exiting...'
     exit (1)
 
-parse_format_1(f, outputdir, 60, device_list)
+parse_format_1(f, outputdir, device_list)
