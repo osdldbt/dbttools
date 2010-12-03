@@ -11,7 +11,6 @@ INSTALL(PROGRAMS
         bin/dbt-plot-transaction-distribution
         bin/dbt-plot-vmstat
         bin/pgsql/dbt-pgsql-plot-database-stats
-        bin/pgsql/dbt-pgsql-plot-database-stats
         bin/pgsql/dbt-pgsql-plot-index-stats
         bin/pgsql/dbt-pgsql-plot-table-stats
         DESTINATION "/bin")
