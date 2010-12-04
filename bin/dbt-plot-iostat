@@ -125,7 +125,7 @@ def parse_format_1(f, dir, device_list):
         r = open(outfile, 'w')
     except:
         print 'cannot open file for writing: ' + outfile
-        exit(1)
+        sys.exit(1)
 
     for tag in ['rrqms', 'wrqms', 'rs', 'ws', 'rsecs', 'wsecs',
             'avgrqsz', 'avgqusz', 'await', 'svctm', 'util']:
@@ -189,7 +189,7 @@ def write_data_file(tag, d, dir, count):
         f = open(outfile, 'w')
     except:
         print 'cannot open file for writing: ' + outfile
-        exit(1)
+        sys.exit(1)
 
     # Generate the header.
     header = "count "
@@ -286,7 +286,7 @@ if argc != 3 and argc != 4:
     print '    [devices] - comma delimited list of devices to plot'
     print
     print 'Will attempt to create <output directory> if it does not exist.'
-    exit(1)
+    sys.exit(1)
 
 infilename = sys.argv[1]
 outputdir = sys.argv[2]
@@ -299,7 +299,7 @@ try:
     f = open(infilename, 'r')
 except:
     print 'cannot open file: %s' % infilename
-    exit(1)
+    sys.exit(1)
 
 # Make sure we can open the files to write to.
 
@@ -310,7 +310,7 @@ if not exists(outputdir):
         system('mkdir -p %s' % outputdir)
     except:
         print 'cannot create directory "%s"' % outputdir
-        exit(2)
+        sys.exit(2)
 
 outputdir = realpath(outputdir)
 
@@ -325,6 +325,6 @@ for line in f:
 
 if format == 0:
     print 'unrecognized iostat format, exiting...'
-    exit (1)
+    sys.exit(1)
 
 parse_format_1(f, outputdir, device_list)
