@@ -27,10 +27,32 @@ def get_r_ymax(dlist, tag):
     return ymax
 
 
-# Format is in:
-# Device: rrqm/s wrqm/s r/s w/s rsec/s wsec/s avgrq-sz avgqu-sz await svctm
-# %util
-def parse_format_1(f, dir, sample):
+def parse_format(f, dir, format, sample):
+
+    if format == 1:
+        cnum = 11
+        c_processor = 1
+        c_user = 2
+        c_nice = 3
+        c_sys = 4
+        c_iowait = 5
+        c_irq = 6
+        c_soft = 7
+        c_steal = 8
+        c_idle = 9
+        c_intrs = 10
+    elif format == 2:
+        cnum = 12
+        c_processor = 2
+        c_user = 3
+        c_nice = 4
+        c_sys = 5
+        c_iowait = 6
+        c_irq = 7
+        c_soft = 8
+        c_steal = 9
+        c_idle = 10
+        c_intrs = 11
 
     # Read in the file and build up the dictionaries for each column of data
     # from mpstat.
@@ -51,23 +73,23 @@ def parse_format_1(f, dir, sample):
     for line in f:
         c = line.split()
 
-        if len(c) != 11:
+        if len(c) != cnum:
             continue
 
-        if c[1] == 'CPU':
+        if c[c_processor] == 'CPU':
             count += 1
             continue
 
-        if c[1] != 'all':
-            processor = 'p%02d' % int(c[1])
+        if c[c_processor] != 'all':
+            processor = 'p%02d' % int(c[c_processor])
         else:
-            processor = c[1]
+            processor = c[c_processor]
 
         try:
-            d_user[processor][count] = c[1]
+            d_user[processor][count] = c[c_user]
         except:
             d_user[processor] = dict()
-            d_user[processor][count] = c[1]
+            d_user[processor][count] = c[c_user]
             d_nice[processor] = dict()
             d_sys[processor] = dict()
             d_iowait[processor] = dict()
@@ -76,14 +98,14 @@ def parse_format_1(f, dir, sample):
             d_steal[processor] = dict()
             d_idle[processor] = dict()
             d_intrs[processor] = dict()
-        d_nice[processor][count] = c[2]
-        d_sys[processor][count] = c[3]
-        d_iowait[processor][count] = c[4]
-        d_irq[processor][count] = c[5]
-        d_soft[processor][count] = c[6]
-        d_steal[processor][count] = c[7]
-        d_idle[processor][count] = c[8]
-        d_intrs[processor][count] = c[9]
+        d_nice[processor][count] = c[c_nice]
+        d_sys[processor][count] = c[c_sys]
+        d_iowait[processor][count] = c[c_iowait]
+        d_irq[processor][count] = c[c_irq]
+        d_soft[processor][count] = c[c_soft]
+        d_steal[processor][count] = c[c_steal]
+        d_idle[processor][count] = c[c_idle]
+        d_intrs[processor][count] = c[c_intrs]
     f.close()
 
     write_data_file('user', d_user, dir, count, sample)
@@ -276,11 +298,18 @@ for line in f:
     c = line.strip().split()
 
     if len(c) == 11 and c[1] == 'CPU':
+        # HH:MM:SS CPU %usr %nice %sys %iowait %irq %soft %steal %guest %idle
         format = 1
-        break;
+        break
+    elif len(c) == 12 and c[2] == 'CPU':
+        # HH:MM:SS AM CPU %user %nice %sys %iowait %irq %soft %steal %idle
+        # intr/s
+        # RHEL 5.5
+        format = 2
+        break
 
 if format == 0:
     print 'unrecognized mpstat format, exiting...'
-    sys.exit (1)
+    sys.exit(1)
 
-parse_format_1(f, outputdir, 60)
+parse_format(f, outputdir, format, 60)

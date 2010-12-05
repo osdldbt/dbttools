@@ -11,7 +11,7 @@ import sys
 from os import makedirs, system
 from os.path import exists, realpath
 
-def parse_format_1(f, d):
+def parse_format(f, format, d):
     counter = 0
     for line in f:
         c = line.strip().split()
@@ -25,47 +25,85 @@ def parse_format_1(f, d):
         d.write('\n')
         counter += 1
 
-# Format is:
-# r b swpd free buff cache si so bi bo in cs us sy id wa
-def write_r_format_1(d, r_template):
-    d.write(r_template % ('procs', 'max(d$V2)', 2, 2,
+def write_r_format(d, format, r_template):
+    if format == 1:
+        c_r = 2
+        c_b = 3
+        c_swpd = 4
+        c_free = 5
+        c_buff = 6
+        c_cache = 7
+        c_si = 8
+        c_so = 9
+        c_bi = 10
+        c_bo = 11
+        c_in = 12
+        c_cu = 13
+        c_us = 14
+        c_sy = 15
+        c_id = 16
+        c_wa = 17
+    elif format == 2:
+        c_r = 2
+        c_b = 3
+        c_swpd = 4
+        c_free = 5
+        c_buff = 6
+        c_cache = 7
+        c_si = 8
+        c_so = 9
+        c_bi = 10
+        c_bo = 11
+        c_in = 12
+        c_cu = 13
+        c_us = 14
+        c_sy = 15
+        c_id = 16
+        c_wa = 17
+        # I annotate the column for % steal but don't plot it because I don't
+        # expect anyone to actually test in a manner where % steal would even
+        # be used. e.g. on a VM host.
+        c_st = 18
+
+    d.write(r_template % ('procs', 'max(d$V%d)' % c_r, 2, c_r,
             'Processes', 'Number of Processes'))
-    d.write('points(d$V1, y = d$V3, type = "b", pch = 2, col = color[2])\n')
+    d.write('points(d$V1, y = d$V%d, type = "b", pch = 2, col = color[2])\n' % c_b)
     d.write('legend("topright", ' \
             'c("Waiting for Runtime", "Uninterruptible in Sleep"), ' \
             'pch = 1:2, col = color)\n')
 
-    d.write(r_template % ('memory', 'max(d$V4, d$V5, d$V6, d$V7)', 4, 4,
-            'Memory', 'Blocks'))
-    d.write('points(d$V1, y = d$V5, type = "b", pch = 2, col = color[2])\n')
-    d.write('points(d$V1, y = d$V6, type = "b", pch = 3, col = color[3])\n')
-    d.write('points(d$V1, y = d$V7, type = "b", pch = 4, col = color[4])\n')
+    d.write(r_template % ('memory', 'max(d$V%d, d$V%d, d$V%d, d$V%d)' % \
+            (c_swpd, c_free, c_buff, c_cache), 4, c_swpd, 'Memory', 'Blocks'))
+    d.write('points(d$V1, y = d$V%d, type = "b", pch = 2, col = color[2])\n' % c_free)
+    d.write('points(d$V1, y = d$V%d, type = "b", pch = 3, col = color[3])\n' % c_buff)
+    d.write('points(d$V1, y = d$V%d, type = "b", pch = 4, col = color[4])\n' % c_cache)
     d.write('legend("topright", c("Swapped", "Free", "Buffered", "Cached"), ' \
             'pch = 1:4, col = color)\n')
 
-    d.write(r_template % ('swap', 'max(d$V8, d$V9)', 2, 8,
+    d.write(r_template % ('swap', 'max(d$V%d, d$V%d)' % (c_si, c_so), 2, c_si,
             'Memory Swapped in from Disk', 'Blocks'))
-    d.write('points(d$V1, y = d$V9, type = "b", pch = 2, col = color[2])\n')
+    d.write('points(d$V1, y = d$V%d, type = "b", pch = 2, col = color[2])\n' % c_so)
     d.write('legend("topright", c("Swapped In", "Swapped Out"), pch = 1:2,' \
             'col = color)\n')
 
-    d.write(r_template % ('io', 'max(d$V10, d$V11)', 2, 10,
+    d.write(r_template % ('io', 'max(d$V%d, d$V%d)' % (c_bi, c_bo), 2, c_bi,
             'Blocks Input/Output', 'Blocks per Second'))
-    d.write('points(d$V1, y = d$V11, type = "b", pch = 2, col = color[2])\n')
+    d.write('points(d$V1, y = d$V%d, type = "b", pch = 2, col = color[2])\n' %
+c_bo)
     d.write('legend("topright", c("Received from Device", "Sent to Device"),' \
             'pch = 1:2, col = color)\n')
 
-    d.write(r_template % ('in', 'max(d$V12)', 1, 12,
+    d.write(r_template % ('in', 'max(d$V%d)' % c_in, 1, c_in,
             'Interrupts', 'Interrupts per Second'))
 
-    d.write(r_template % ('cs', 'max(d$V13)', 1, 13,
+    d.write(r_template % ('cs', 'max(d$V%d)' % c_cu, 1, c_cu,
             'Context Switches', 'Context Switches per Second'))
 
-    d.write(r_template % ('cpu', '100', 4, 14,
+    d.write(r_template % ('cpu', '100', 4, c_us,
             'Processor Utilization', 'Percentage'))
-    d.write('points(d$V1, y = d$V15, type = "b", pch = 2, col = color[2])\n')
-    d.write('points(d$V1, y = d$V16, type = "b", pch = 3, col = color[3])\n')
-    d.write('points(d$V1, y = d$V17, type = "b", pch = 4, col = color[4])\n')
+    d.write('points(d$V1, y = d$V%d, type = "b", pch = 2, col = color[2])\n' % c_sy)
+    d.write('points(d$V1, y = d$V%d, type = "b", pch = 3, col = color[3])\n' % c_id)
+    d.write('points(d$V1, y = d$V%d, type = "b", pch = 4, col = color[4])\n' % c_wa)
     d.write('legend("topright", c("User", "System", "Idle", "I/O Wait"), ' \
             'pch = 1:4, col = color)\n')
 
@@ -110,8 +148,16 @@ for line in f:
     c = line.strip().split()
 
     if c[0] == 'r' and len(c) == 16:
+        # Format is:
+        # r b swpd free buff cache si so bi bo in cs us sy id wa
         format = 1
-        break;
+        break
+    elif c[0] == 'r' and len(c) == 17:
+        # Format is:
+        # r b swpd free buff cache si so bi bo in cs us sy id wa st
+        # RHEL 5.5
+        format = 2
+        break
 
 if format == 0:
     print 'unrecognize vmstat format, exiting...'
@@ -131,8 +177,7 @@ except:
     print 'cannot open file to write: %s/%s' % (outputdir, rfilename)
     sys.exit(4)
 
-if format == 1:
-    parse_format_1(f, d)
+parse_format(f, format, d)
 
 f.close()
 d.close()
@@ -163,8 +208,7 @@ r_template = \
         'grid(col = "gray")\n'
 
 r.write('d <- read.table("%s", header = FALSE)\n' % datafilename)
-if format == 1:
-    write_r_format_1(r, r_template)
+write_r_format(r, format, r_template)
 r.close()
 
 system('(cd %s && R --slave --no-save < %s)' % (outputdir, rfilename))
