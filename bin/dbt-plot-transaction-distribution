@@ -74,7 +74,7 @@ if num_colors is not None:
     color = r.rainbow(int(num_colors))
 
 if num_colors is not None and color is not None:
-    col = color[int(color_index)]
+    col = color[int(color_index) - 1]
 else:
     col = 0
 
