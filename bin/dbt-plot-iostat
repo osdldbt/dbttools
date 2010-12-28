@@ -12,268 +12,76 @@ from os import system
 from os.path import basename, exists, realpath
 from re import sub
 
+import rpy2.robjects as robjects
+from rpy2.robjects.vectors import DataFrame
+
+r = robjects.r
+
 # R can only handle pch from 1-25.  Use modulo to recycle and reuse the
 # symbols.
 max_pch = 25
 
-def get_r_ymax(dlist, tag):
-    index = 0
-    first = True
-    for d in dlist:
-        for key, junk in sorted(d.iteritems()):
-            if first == True:
-                ymax = 'd%s$%s' % (tag[index], key)
-                first = False
-            else:
-                ymax += ', d%s$%s' % (tag[index], key)
+
+def get_legend(data):
+    names = list()
+    for col in sorted(data):
+        names.append(col)
+    return names
+
+
+def gety(df, data):
+    y = list()
+    for col in sorted(data):
+        y.append(df.rx2(col))
+    return y
+
+
+def getymax(df, data):
+    y = list()
+    for col in sorted(data):
+        y.append(df.rx(col))
+    return y
+
+
+def make_chart(tag, x, y, xmax, ymax_list, num_colors, title, ylabel, legend):
+    r.bitmap('%s/iostat-%s.png' % (outputdir, tag), type='png16m', units='px',
+             width=1280, height=800, res=150, taa=4, gaa=4)
+
+    color = r.rainbow(num_colors)
+    ymax = r.max(*ymax_list)[0]
+
+    # Plot the first set of data.
+    r.plot(x, y[0], xlim=r.c(0, xmax), ylim=r.c(0, ymax), type='b',
+           main=title, xlab='Elapsed Time (minutes)', ylab=ylabel, pch=1,
+           col=color[0])
+
+    # Plot the rest of the data.
+    y.pop(0)
+    index = 1
+    pch = 2
+    for i in y:
+        r.points(x, y=i, type='b', pch=pch, col=color[index])
+
         index += 1
-    return ymax
+        pch = pch % max_pch + 1
+
+    # Create a legend if there are any labels.
+    int_list = list()
+    pch = 1
+    for i in legend:
+        int_list.append(pch)
+        pch = pch % max_pch + 1
+    if len(legend) > 0:
+        r.legend('topright', r.c(*legend), pch=r.c(*int_list), col=color)
+
+    r.grid(col='gray')
+    r('dev.off()')
 
 
-# Format is in:
-# Device: rrqm/s wrqm/s r/s w/s rsec/s wsec/s avgrq-sz avgqu-sz await svctm
-# %util
-def parse_format_1(f, dir, device_list):
-
-    # Read in the file and build up the dictionaries for each column of data
-    # from iostat.
-
-    d_rrqms = dict()
-    d_wrqms = dict()
-    d_rs = dict()
-    d_ws = dict()
-    d_rsecs = dict()
-    d_wsecs = dict()
-    d_avgrqsz = dict()
-    d_avgqusz = dict()
-    d_await = dict()
-    d_svctm = dict()
-    d_util = dict()
-
-    # Build a dict of dicts.  Why?  Because I fear hot swappable and nfs
-    # devices coming and going.
-
-    count = 0
-    for line in f:
-        c = line.split()
-
-        if len(c) != 12:
-            continue
-
-        if c[0] == 'Device:':
-            count += 1
-            continue
-
-        # Filter for specific devices.
-        if device_list is not None and c[0] not in device_list:
-            continue
-
-        # R doesn't like '/' or '-' characters in the name, like how the
-        # cciss driver and device mapper enumerates devices.  R will
-        # convert them to '.' so just do it here so it's consistent
-        # everywhere.
-        device = sub('/', '.', c[0])
-        device = sub('-', '.', device)
-
-        try:
-            d_rrqms[device][count] = c[1]
-        except:
-            d_rrqms[device] = dict()
-            d_rrqms[device][count] = c[1]
-            d_wrqms[device] = dict()
-            d_rs[device] = dict()
-            d_ws[device] = dict()
-            d_rsecs[device] = dict()
-            d_wsecs[device] = dict()
-            d_avgrqsz[device] = dict()
-            d_avgqusz[device] = dict()
-            d_await[device] = dict()
-            d_svctm[device] = dict()
-            d_util[device] = dict()
-        d_wrqms[device][count] = c[2]
-        d_rs[device][count] = c[3]
-        d_ws[device][count] = c[4]
-
-        # Misnomer, expecting sectors but converting to MB/s.
-        d_rsecs[device][count] = float(c[5]) * 512.0 / 1024.0 / 1024.0
-        d_wsecs[device][count] = float(c[6]) * 512.0 / 1024.0 / 1024.0
-
-        # Convert from sectors to KB.
-        d_avgrqsz[device][count] = float(c[7]) * 512.0 / 1024.0
-        d_avgqusz[device][count] = c[8]
-        d_await[device][count] = c[9]
-        d_svctm[device][count] = c[10]
-        d_util[device][count] = c[11]
-    f.close()
-
-    write_data_file('rrqms', d_rrqms, dir, count)
-    write_data_file('wrqms', d_wrqms, dir, count)
-    write_data_file('rs', d_rs, dir, count)
-    write_data_file('ws', d_ws, dir, count)
-    write_data_file('rsecs', d_rsecs, dir, count)
-    write_data_file('wsecs', d_wsecs, dir, count)
-    write_data_file('avgrqsz', d_avgrqsz, dir, count)
-    write_data_file('avgqusz', d_avgqusz, dir, count)
-    write_data_file('await', d_await, dir, count)
-    write_data_file('svctm', d_svctm, dir, count)
-    write_data_file('util', d_util, dir, count)
-
-    # Done reading the input file, now generate the data files for R.
-    rfile = 'iostat.r'
-    outfile = '%s/%s' % (dir, rfile)
-    try:
-        r = open(outfile, 'w')
-    except:
-        print 'cannot open file for writing: ' + outfile
-        sys.exit(1)
-
-    for tag in ['rrqms', 'wrqms', 'rs', 'ws', 'rsecs', 'wsecs',
-            'avgrqsz', 'avgqusz', 'await', 'svctm', 'util']:
-        r.write('d%s <- read.table("iostat-%s.data", header = TRUE)\n' % \
-                (tag, tag))
-
-    ymax = get_r_ymax([d_rrqms, d_wrqms], ['rrqms', 'wrqms'])
-    write_r_format_1(r, 'rqms', 'Requests Merged', 'rrqms', d_rrqms, count,
-            'Number of Requests', ymax, 2)
-    write_r_format_1_append(r, 'wrqms', d_wrqms, count, 2)
-    write_r_legend(r, [d_rrqms, d_wrqms], ['reads', 'writes'])
-
-    ymax = get_r_ymax([d_rs, d_ws], ['rs', 'ws'])
-    write_r_format_1(r, 'requests', 'I/O Requests', 'rs', d_rs, count,
-            'Number of Requests', ymax, 2)
-    write_r_format_1_append(r, 'ws', d_ws, count, 2)
-    write_r_legend(r, [d_rs, d_ws], ['reads', 'writes'])
-
-    ymax = get_r_ymax([d_rsecs, d_wsecs], ['rsecs', 'wsecs'])
-    write_r_format_1(r, 'throughput', 'Throughput', 'rsecs', d_rsecs, count,
-            'Megabytes per Second', ymax, 2)
-    write_r_format_1_append(r, 'wsecs', d_wsecs, count, 2)
-    write_r_legend(r, [d_rsecs, d_wsecs], ['reads', 'writes'])
-
-    ymax = get_r_ymax([d_avgrqsz], ['avgrqsz'])
-    write_r_format_1(r, 'avgrqsz', 'Average Request Size', 'avgrqsz',
-            d_avgrqsz, count, 'Kilobytes', ymax, 1)
-    write_r_legend(r, [d_avgrqsz], [''])
-
-    ymax = get_r_ymax([d_avgqusz], ['avgqusz'])
-    write_r_format_1(r, 'avgqusz', 'Average Queue Length', 'avgqusz',
-            d_avgqusz, count, 'Length', ymax, 1)
-    write_r_legend(r, [d_avgqusz], [''])
-
-    ymax = get_r_ymax([d_await], ['await'])
-    write_r_format_1(r, 'await', 'Average Wait Time', 'await',
-            d_await, count, 'Time (milliseconds)', ymax, 1)
-    write_r_legend(r, [d_await], [''])
-
-    ymax = get_r_ymax([d_svctm], ['svctm'])
-    write_r_format_1(r, 'svctm', 'Average Service Time', 'svctm',
-            d_svctm, count, 'Time (milliseconds)', ymax, 1)
-    write_r_legend(r, [d_svctm], [''])
-
-    write_r_format_1(r, 'util', 'Bandwidth Utilization', 'util',
-            d_util, count, 'Percentage', '100', 1)
-    write_r_legend(r, [d_util], [''])
-
-    r.write('dev.off()\n')
-
-    r.close()
-
-    system('(cd %s && R --slave --no-save < %s)' % (dir, rfile))
-
-
-# Create the data files for R.
-def write_data_file(tag, d, dir, count):
-    datafilename = 'iostat-%s.data' % tag
-    outfile = dir + '/' + datafilename
-    try:
-        f = open(outfile, 'w')
-    except:
-        print 'cannot open file for writing: ' + outfile
-        sys.exit(1)
-
-    # Generate the header.
-    header = "count "
-    # FIXME: Do I really have to use a junk variable to ignore stuff?
-    for key, junk in sorted(d.iteritems()):
-        header += key + ' '
-    f.write(header + '\n')
-
-    # Output the data.  Start at 1 instead of 0 because
-    for i in range(0, count - 1):
-        line = '%d' % (i + 1)
-        for key, v in sorted(d.iteritems()):
-            # FIXME: Need to handle if that device or iteration doesn't exist.
-            line += ' %s' % v[i]
-        f.write(line + '\n')
-    f.close()
-
-
-def write_r_format_1(r, name, title, tag, d, count, ylab, ymax, mult):
-    device_count = len(d)
-
-    r.write('\n')
-    r.write('max_x <-max(c(d%s$count))\n' % tag)
-    r.write('max_y <-max(%s)\n' % ymax)
-    r.write('bitmap("iostat-%s.png",\n' \
-            '       type = "png16m",\n' \
-            '       units = "px",\n' \
-            '       width = 1280,\n' \
-            '       height = 800,\n' \
-            '       taa = 4,\n' \
-            '       gaa = 4)\n' % name)
-    r.write('color <- rainbow(%d)\n' % (device_count * mult))
-    first = True
-    i = 1
-    # FIXME: Do I really have to use a junk variable to ignore stuff?
-    for key, junk in sorted(d.iteritems()):
-        if first:
-            r.write('plot(d%s$count,\n' % tag)
-            r.write('    y = d%s$%s,\n' % (tag, key))
-            r.write('    type = "b",\n')
-            r.write('    col = color[%d],\n' % i)
-            r.write('    pch = 1,\n')
-            r.write('    main = "%s",\n' % title)
-            r.write('    xlab = "Elapsed Time (Minutes)",\n')
-            r.write('    ylab = "%s",\n' % ylab)
-            r.write('    ylim = c(0, max_y))\n')
-            first = False
-        else:
-            r.write('points(d%s$count, d%s$%s, type = "b", ' \
-                    'col = color[%d], pch = %d)\n' % \
-                    (tag, tag, key, i, ((i - 1) % max_pch + 1)))
-        i += 1
-    r.write('grid()\n')
-
-
-def write_r_format_1_append(r, tag, d, count, num):
-    i = len(d)
-    # FIXME: Do I really have to use a junk variable to ignore stuff?
-    for key, junk in sorted(d.iteritems()):
-        i += 1
-        r.write('points(d%s$count, d%s$%s, type = "b", ' \
-                'col = color[%d], pch = %d)\n' % \
-                (tag, tag, key, i, ((i - 1) % max_pch + 1)))
-
-
-def write_r_legend(r, dlist, tag):
-    count = 0
-    first = True
-    legend = ''
-    index = 0
-    pch = ''
-    for d in dlist:
-        for key, junk in sorted(d.iteritems()):
-            if first == True:
-                legend = '"%s %s"' % (key, tag[index])
-                first = False;
-                pch = '%d' % (count + 1)
-            else:
-                legend += ', "%s %s"' % (key, tag[index])
-                pch += ', %d' % ((count + 1) % max_pch + 1)
-            count += 1
-        index += 1
-    r.write('legend("topright", c(%s), pch = c(%s), col = color)\n' % \
-            (legend, pch))
+def prep_data_frame(data):
+    for key, value in data.iteritems():
+        data[key] = robjects.FloatVector(value)
+    return data
 
 
 argc = len(sys.argv)
@@ -320,11 +128,196 @@ for line in f:
     c = line.strip().split()
 
     if len(c) == 12 and c[0] == 'Device:':
+        # Device: rrqm/s wrqm/s r/s w/s rsec/s wsec/s avgrq-sz avgqu-sz await
+        # svctm %util
         format = 1
         break;
 
 if format == 0:
     print 'unrecognized iostat format, exiting...'
     sys.exit(1)
+elif format == 1:
+    c_rrqms = 1
+    c_wrqms = 2
+    c_rs = 3
+    c_ws = 4
+    c_rsecs = 5
+    c_wsecs = 6
+    c_avgrqsz = 7
+    c_avgqusz = 8
+    c_await = 9
+    c_svctm = 10
+    c_util = 11
 
-parse_format_1(f, outputdir, device_list)
+# Read in the file and build up the dictionaries for each column of data from
+# iostat.
+
+d_x = [0, 1]
+d_rrqms = dict()
+d_wrqms = dict()
+d_rs = dict()
+d_ws = dict()
+d_rsecs = dict()
+d_wsecs = dict()
+d_avgrqsz = dict()
+d_avgqusz = dict()
+d_await = dict()
+d_svctm = dict()
+d_util = dict()
+
+# Build a dict of dicts.  Why?  Because I fear hot swappable and nfs devices
+# coming and going.
+
+count = 1
+for line in f:
+    c = line.split()
+
+    if len(c) != 12:
+        continue
+
+    if c[0] == 'Device:':
+        count += 1
+        d_x.append(count)
+        continue
+
+    # Filter for specific devices.
+    if device_list is not None and c[0] not in device_list:
+        continue
+
+    # R doesn't like '/' or '-' characters in the name, like how the cciss
+    # driver and device mapper enumerates devices.  R will convert them to '.'
+    # so just do it here so it's consistent everywhere.
+    device = sub('/', '.', c[0])
+    device = sub('-', '.', device)
+
+    if device not in d_rrqms:
+        d_rrqms[device] = [0]
+        d_wrqms[device] = [0]
+        d_rs[device] = [0]
+        d_ws[device] = [0]
+        d_rsecs[device] = [0]
+        d_wsecs[device] = [0]
+        d_avgrqsz[device] = [0]
+        d_avgqusz[device] = [0]
+        d_await[device] = [0]
+        d_svctm[device] = [0]
+        d_util[device] = [0]
+
+    d_rrqms[device].append(c[c_rrqms])
+    d_wrqms[device].append(c[c_wrqms])
+    d_rs[device].append(c[c_rs])
+    d_ws[device].append(c[c_ws])
+
+    # Misnomer, expecting sectors but converting to MB/s.
+    d_rsecs[device].append(float(c[c_rsecs]) * 512.0 / 1024.0 / 1024.0)
+    d_wsecs[device].append(float(c[c_wsecs]) * 512.0 / 1024.0 / 1024.0)
+
+    # Convert from sectors to KB.
+    d_avgrqsz[device].append(float(c[c_avgrqsz]) * 512.0 / 1024.0)
+    d_avgqusz[device].append(c[c_avgqusz])
+    d_await[device].append(c[c_await])
+    d_svctm[device].append(c[c_svctm])
+    d_util[device].append(c[c_util])
+f.close()
+
+# Create the R data frames.
+
+data = {'elapsed_time': robjects.IntVector(d_x)}
+dfx = r['data.frame'](**data)
+ 
+d_rrqms = prep_data_frame(d_rrqms)
+d_wrqms = prep_data_frame(d_wrqms)
+d_rs = prep_data_frame(d_rs)
+d_ws = prep_data_frame(d_ws)
+d_rsecs = prep_data_frame(d_rsecs)
+d_wsecs = prep_data_frame(d_wsecs)
+d_avgrqsz = prep_data_frame(d_avgrqsz)
+d_avgqusz = prep_data_frame(d_avgqusz)
+d_await = prep_data_frame(d_await)
+d_svctm = prep_data_frame(d_svctm)
+d_util = prep_data_frame(d_util)
+
+xmax = r.max(*dfx.rx('elapsed_time'))[0]
+
+legend = get_legend(d_rrqms)
+
+# Create charts for read/write request merges per second.
+dfr = r['data.frame'](**d_rrqms)
+dfw = r['data.frame'](**d_wrqms)
+
+# Set the y-axis to the same scale between the read and write data so that it
+# is easier to compare charts.
+ymax_list = getymax(dfr, d_rrqms)
+ymax_list.extend(getymax(dfw, d_wrqms))
+
+y = gety(dfr, d_rrqms)
+make_chart('rrqms', dfx.rx2('elapsed_time'), y, xmax, ymax_list, len(y),
+           'Read Requests Merged', 'Number of Requests', legend)
+
+y = gety(dfw, d_wrqms)
+make_chart('wrqms', dfx.rx2('elapsed_time'), y, xmax, ymax_list, len(y),
+           'Write Requests Merged', 'Number of Requests', legend)
+
+# Create charts for reads/writes per second.
+dfr = r['data.frame'](**d_rs)
+dfw = r['data.frame'](**d_ws)
+
+# Set the y-axis to the same scale between the read and write data so that it
+# is easier to compare charts.
+ymax_list = getymax(dfr, d_rs)
+ymax_list.extend(getymax(dfw, d_ws))
+
+y = gety(dfr, d_rs)
+make_chart('rs', dfx.rx2('elapsed_time'), y, xmax, ymax_list, len(y),
+           'Read I/O Requests', 'Number of Requests', legend)
+
+y = gety(dfw, d_ws)
+make_chart('ws', dfx.rx2('elapsed_time'), y, xmax, ymax_list, len(y),
+           'Write I/O Requests', 'Number of Requests', legend)
+
+# Create charts for MB reads/writes per second.
+dfr= r['data.frame'](**d_rsecs)
+dfw= r['data.frame'](**d_wsecs)
+
+# Set the y-axis to the same scale between the read and write data so that it
+# is easier to compare charts.
+ymax_list = getymax(dfr, d_rsecs)
+ymax_list.extend(getymax(dfw, d_wsecs))
+
+y = gety(dfr, d_rsecs)
+make_chart('rsec', dfx.rx2('elapsed_time'), y, xmax, ymax_list, len(y),
+           'Read Throughput', 'Megabytes per Second', legend)
+
+y = gety(dfw, d_wsecs)
+make_chart('wsec', dfx.rx2('elapsed_time'), y, xmax, ymax_list, len(y),
+           'Write Throughput', 'Megabytes per Second', legend)
+
+df = r['data.frame'](**d_avgrqsz)
+y = gety(df, d_avgrqsz)
+ymax_list = getymax(df, d_avgrqsz)
+make_chart('avgrqsz', dfx.rx2('elapsed_time'), y, xmax, ymax_list, len(y),
+           'Average Request Size', 'Kilobytes', legend)
+
+df = r['data.frame'](**d_avgqusz)
+y = gety(df, d_avgqusz)
+ymax_list = getymax(df, d_avgqusz)
+make_chart('avgqusz', dfx.rx2('elapsed_time'), y, xmax, ymax_list, len(y),
+           'Average Queue Length', 'Length', legend)
+
+df = r['data.frame'](**d_await)
+y = gety(df, d_await)
+ymax_list = getymax(df, d_await)
+make_chart('await', dfx.rx2('elapsed_time'), y, xmax, ymax_list, len(y),
+           'Average Wait Time', 'Milliseconds', legend)
+
+df = r['data.frame'](**d_svctm)
+y = gety(df, d_svctm)
+ymax_list = getymax(df, d_svctm)
+make_chart('svctm', dfx.rx2('elapsed_time'), y, xmax, ymax_list, len(y),
+           'Average Service Time', 'Milliseconds', legend)
+
+df = r['data.frame'](**d_util)
+y = gety(df, d_util)
+ymax_list = getymax(df, d_util)
+make_chart('util', dfx.rx2('elapsed_time'), y, xmax, [100], len(y),
+           'Bandwidth Utilization', 'Percentage', legend)

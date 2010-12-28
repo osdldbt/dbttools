@@ -11,101 +11,42 @@ import sys
 from os import makedirs, system
 from os.path import exists, realpath
 
-def parse_format(f, format, d):
-    counter = 0
-    for line in f:
-        c = line.strip().split()
+import rpy2.robjects as robjects
+from rpy2.robjects.vectors import DataFrame
 
-        if c[0] == 'procs' or c[0] == 'r':
-            continue
+r = robjects.r
 
-        d.write('%d' % counter)
-        for i in c:
-            d.write(' %s' % i)
-        d.write('\n')
-        counter += 1
+def make_chart(tag, x, y, xmax, ymax_list, num_colors, title, ylabel, legend):
+    r.bitmap('%s/vmstat-%s.png' % (outputdir, tag), type='png16m', units='px',
+             width=1280, height=800, res=150, taa=4, gaa=4)
 
-def write_r_format(d, format, r_template):
-    if format == 1:
-        c_r = 2
-        c_b = 3
-        c_swpd = 4
-        c_free = 5
-        c_buff = 6
-        c_cache = 7
-        c_si = 8
-        c_so = 9
-        c_bi = 10
-        c_bo = 11
-        c_in = 12
-        c_cu = 13
-        c_us = 14
-        c_sy = 15
-        c_id = 16
-        c_wa = 17
-    elif format == 2:
-        c_r = 2
-        c_b = 3
-        c_swpd = 4
-        c_free = 5
-        c_buff = 6
-        c_cache = 7
-        c_si = 8
-        c_so = 9
-        c_bi = 10
-        c_bo = 11
-        c_in = 12
-        c_cu = 13
-        c_us = 14
-        c_sy = 15
-        c_id = 16
-        c_wa = 17
-        # I annotate the column for % steal but don't plot it because I don't
-        # expect anyone to actually test in a manner where % steal would even
-        # be used. e.g. on a VM host.
-        c_st = 18
+    color = r.rainbow(num_colors)
+    ymax = r.max(*ymax_list)[0]
 
-    d.write(r_template % ('procs', 'max(d$V%d)' % c_r, 2, c_r,
-            'Processes', 'Number of Processes'))
-    d.write('points(d$V1, y = d$V%d, type = "b", pch = 2, col = color[2])\n' % c_b)
-    d.write('legend("topright", ' \
-            'c("Waiting for Runtime", "Uninterruptible in Sleep"), ' \
-            'pch = 1:2, col = color)\n')
+    # Plot the first set of data.
+    r.plot(x, y[0], xlim=r.c(0, xmax), ylim=r.c(0, ymax), type='b',
+           main=title, xlab='Elapsed Time (minutes)', ylab=ylabel, pch=1,
+           col=color[0])
 
-    d.write(r_template % ('memory', 'max(d$V%d, d$V%d, d$V%d, d$V%d)' % \
-            (c_swpd, c_free, c_buff, c_cache), 4, c_swpd, 'Memory', 'Blocks'))
-    d.write('points(d$V1, y = d$V%d, type = "b", pch = 2, col = color[2])\n' % c_free)
-    d.write('points(d$V1, y = d$V%d, type = "b", pch = 3, col = color[3])\n' % c_buff)
-    d.write('points(d$V1, y = d$V%d, type = "b", pch = 4, col = color[4])\n' % c_cache)
-    d.write('legend("topright", c("Swapped", "Free", "Buffered", "Cached"), ' \
-            'pch = 1:4, col = color)\n')
+    # Plot the rest of the data.
+    y.pop(0)
+    index = 1
+    for i in y:
+        r.points(x, y=i, type='b', pch=index + 1, col=color[index])
 
-    d.write(r_template % ('swap', 'max(d$V%d, d$V%d)' % (c_si, c_so), 2, c_si,
-            'Memory Swapped in from Disk', 'Blocks'))
-    d.write('points(d$V1, y = d$V%d, type = "b", pch = 2, col = color[2])\n' % c_so)
-    d.write('legend("topright", c("Swapped In", "Swapped Out"), pch = 1:2,' \
-            'col = color)\n')
+        index += 1
 
-    d.write(r_template % ('io', 'max(d$V%d, d$V%d)' % (c_bi, c_bo), 2, c_bi,
-            'Blocks Input/Output', 'Blocks per Second'))
-    d.write('points(d$V1, y = d$V%d, type = "b", pch = 2, col = color[2])\n' %
-c_bo)
-    d.write('legend("topright", c("Received from Device", "Sent to Device"),' \
-            'pch = 1:2, col = color)\n')
+    # Create a legend if there are any labels.
+    int_list = list()
+    index = 1
+    for i in legend:
+        int_list.append(index)
+        index += 1
+    if len(legend) > 0:
+        r.legend('topright', r.c(*legend), pch=r.c(*int_list), col=color)
 
-    d.write(r_template % ('in', 'max(d$V%d)' % c_in, 1, c_in,
-            'Interrupts', 'Interrupts per Second'))
-
-    d.write(r_template % ('cs', 'max(d$V%d)' % c_cu, 1, c_cu,
-            'Context Switches', 'Context Switches per Second'))
-
-    d.write(r_template % ('cpu', '100', 4, c_us,
-            'Processor Utilization', 'Percentage'))
-    d.write('points(d$V1, y = d$V%d, type = "b", pch = 2, col = color[2])\n' % c_sy)
-    d.write('points(d$V1, y = d$V%d, type = "b", pch = 3, col = color[3])\n' % c_id)
-    d.write('points(d$V1, y = d$V%d, type = "b", pch = 4, col = color[4])\n' % c_wa)
-    d.write('legend("topright", c("User", "System", "Idle", "I/O Wait"), ' \
-            'pch = 1:4, col = color)\n')
+    r.grid(col='gray')
+    r('dev.off()')
 
 if len(sys.argv) != 3:
     print 'Create plots from vmstat output.'
@@ -162,53 +103,119 @@ for line in f:
 if format == 0:
     print 'unrecognize vmstat format, exiting...'
     sys.exit(1)
+elif format == 1 or format == 2:
+    c_r = 0
+    c_b = 1
+    c_swpd = 2
+    c_free = 3
+    c_buff = 4
+    c_cache = 5
+    c_si = 6
+    c_so = 7
+    c_bi = 8
+    c_bo = 9
+    c_in = 10
+    c_cu = 11
+    c_us = 12
+    c_sy = 13
+    c_id = 14
+    c_wa = 15
+    # If format is 2, then % steal is available at position 18 but assuming
+    # this workload will never run on a VM host where % steal is used.
 
-datafilename = 'vmstat.data'
-try:
-    d = open(outputdir + '/' + datafilename, 'w')
-except:
-    print 'cannot open file to write: %s/%s' % (outputdir, datafilename)
-    sys.exit(3)
-    
-rfilename = 'vmstat.r'
-try:
-    r = open(outputdir + '/' + rfilename, 'w')
-except:
-    print 'cannot open file to write: %s/%s' % (outputdir, rfilename)
-    sys.exit(4)
+# Transform the raw data into Python lists before passing them to R.
+counter = 1
+data = dict()
+# TODO: Initialize the data dict() based on the vmstat format identified.
+data['elapsed_time'] = [0]
+data['r'] = [c_r]
+data['b'] = [c_b]
+data['swpd'] = [c_swpd]
+data['free'] = [c_free]
+data['buff'] = [c_buff]
+data['cache'] = [c_cache]
+data['si'] = [c_si]
+data['so'] = [c_so]
+data['bi'] = [c_bi]
+data['bo'] = [c_bo]
+# Somewhere betweeh python 2.4 (maybe other version) and R doesn't like 'in' as
+# a column name.
+data['intr'] = [c_in]
+data['cs'] = [c_cu]
+data['us'] = [c_us]
+data['sy'] = [c_sy]
+data['id'] = [c_id]
+data['wa'] = [c_wa]
+for line in f:
+    c = line.strip().split()
 
-parse_format(f, format, d)
+    if c[0] == 'procs' or c[0] == 'r':
+        continue
 
+    data['elapsed_time'].append(counter)
+    # TODO: Fill in the data dict() based on the the vmstat format identified.
+    data['r'].append(c[c_r])
+    data['b'].append(c[c_b])
+    data['swpd'].append(c[c_swpd])
+    data['free'].append(c[c_free])
+    data['buff'].append(c[c_buff])
+    data['cache'].append(c[c_cache])
+    data['si'].append(c[c_si])
+    data['so'].append(c[c_so])
+    data['bi'].append(c[c_bi])
+    data['bo'].append(c[c_bo])
+    data['intr'].append(c[c_in])
+    data['cs'].append(c[c_cu])
+    data['us'].append(c[c_us])
+    data['sy'].append(c[c_sy])
+    data['id'].append(c[c_id])
+    data['wa'].append(c[c_wa])
+
+    counter += 1
 f.close()
-d.close()
 
-# Create the R files.
+# All values from vmstat are integers, convert all of them to R vectors and
+# create an R data frame.
+for key, value in data.iteritems():
+    data[key] = robjects.IntVector(value)
+df = r['data.frame'](**data)
 
-r_template = \
-        'bitmap("vmstat-%s.png",\n' \
-        '       type = "png16m",\n' \
-        '       units = "px",\n' \
-        '       width = 1280,\n' \
-        '       height = 800,\n' \
-        '       res = 150,\n' \
-        '       taa = 4,\n' \
-        '       gaa = 4)\n' \
-        'xmax = max(d$V1)\n' \
-        'ymax = %s\n' \
-        'color <- rainbow(%d)\n' \
-        'plot(d$V1,\n' \
-        '     d$V%d,\n' \
-        '     xlim = c(0, xmax),\n' \
-        '     ylim = c(0, ymax),\n' \
-        '     type = "b",\n' \
-        '     main = "%s",\n' \
-        '     xlab = "Elapsed Time (minutes)",\n' \
-        '     ylab = "%s",\n' \
-        '     col = color[1])\n' \
-        'grid(col = "gray")\n'
+# All charts will have the same x-axis range.
+xmax = r.max(df.rx('elapsed_time'))[0]
 
-r.write('d <- read.table("%s", header = FALSE)\n' % datafilename)
-write_r_format(r, format, r_template)
-r.close()
+# Plot process stats.
+make_chart('procs', df.rx2('elapsed_time'), [df.rx2('r'), df.rx2('b')], xmax,
+           [df.rx('r'), df.rx('b')], 2, 'Processes', 'Number of Processes',
+           ['Waiting for Runtime', 'Uninterruptible in Sleep'])
 
-system('(cd %s && R --slave --no-save < %s)' % (outputdir, rfilename))
+# Plot memory stats.
+make_chart('memory', df.rx2('elapsed_time'),
+           [df.rx2('swpd'), df.rx2('free'), df.rx2('buff'), df.rx2('cache')],
+           xmax,
+           [df.rx('swpd'), df.rx('free'), df.rx('buff'), df.rx('cache')],
+           4, 'Memory', 'Blocks', ['Swapped', 'Free', 'Buffered', 'Cached'])
+
+# Plot swapping stats.
+make_chart('swap', df.rx2('elapsed_time'), [df.rx2('si'), df.rx2('so')], xmax,
+           [df.rx('si'), df.rx('so')], 2, 'Memory Swapped in from Disk',
+           'Blocks', ['Swapped In', 'Swapped Out'])
+
+# Plot i/o stats.
+make_chart('io', df.rx2('elapsed_time'), [df.rx2('bi'), df.rx2('bo')], xmax,
+           [df.rx('bi'), df.rx('bo')], 2, 'Blocks Input/Output',
+           'Blocks per Second', ['Received from Device', 'Sent to Device Out'])
+
+# Plot interrupts.
+make_chart('in', df.rx2('elapsed_time'), [df.rx2('intr')], xmax,
+           [df.rx('intr')], 2, 'Interrupts', 'Interrupts per Second', [])
+
+# Plot context switches.
+make_chart('cs', df.rx2('elapsed_time'), [df.rx2('cs')], xmax, [df.rx('cs')], 2,
+           'Context Switches', 'Context Switches per Second', [])
+
+# Plot processor utilization.
+make_chart('cpu', df.rx2('elapsed_time'),
+           [df.rx2('us'), df.rx2('sy'), df.rx2('id'), df.rx2('wa')], xmax,
+           [df.rx('us'), df.rx('sy'), df.rx('id'), df.rx('wa')], 4,
+           'Processor Utilization', 'Percentage',
+           ['User', 'System', 'Idle', 'I/O Wait'])

@@ -11,6 +11,9 @@ import sys
 from os import makedirs, system
 from os.path import exists, realpath
 
+import rpy2.robjects as robjects
+from rpy2.robjects.vectors import DataFrame
+
 if len(sys.argv) not in [5, 7]:
     print 'Create a distribution plot of a transaction.'
     print 'usage: %s <transaction name> <transaction tag> <mix.log> ' % \
@@ -30,23 +33,24 @@ transaction_tag = sys.argv[2]
 infilename = sys.argv[3]
 outputdir = sys.argv[4]
 
-# Secret optional color arguments for R.
+# TODO: Secret optional color arguments for R. Make less secret...
 try:
     num_colors = sys.argv[5]
-    color = sys.argv[6]
+    color_index = sys.argv[6]
 except:
     num_colors = None
-    color = None
+    color_index = None
 
-# Make sure we can oping the file to read in data.
-try:
-    f = open(infilename, 'r')
-except:
+sample_length = 60
+
+r = robjects.r
+
+# Make sure the file exists.
+if not exists(infilename):
     print 'cannot open file: %s' % infilename
     sys.exit(1)
 
-# Make sure we can open the files to write to.
-
+# Create the output directory.
 if not exists(outputdir):
     try:
         # FIXME: Like I know why makedirs() fails...
@@ -58,64 +62,30 @@ if not exists(outputdir):
 
 outputdir = realpath(outputdir)
 
-datafilename = 't%s-distribution.data' % transaction_tag
-try:
-    d = open(outputdir + '/' + datafilename, 'w')
-except:
-    print 'cannot open file to write: %s/%s' % (outputdir, datafilename)
-    sys.exit(3)
-    
-rfilename = 't%s-distribution.r' % transaction_tag
-try:
-    r = open(outputdir + '/' + rfilename, 'w')
-except:
-    print 'cannot open file to write: %s/%s' % (outputdir, rfilename)
-    sys.exit(4)
+# Read in the data.
+df = DataFrame.from_csvfile(infilename, header=False)
+subset = r.subset(df, df.rx('V2').ro == transaction_tag)
 
-# Read in the data and write out the datafile for R.
+start_ctime = df[0][0]
 
-start_ctime = None
+elapsed_time = subset.rx(1).ro - start_ctime
 
-for line in f:
-    c = line.strip().split(',')
-
-    if c[1] != transaction_tag or len(c) != 4:
-        continue
-
-    if start_ctime is None:
-        start_ctime = long(c[0])
-
-    d.write('%d %s\n' % (long(c[0]) - start_ctime, c[2]))
-
-f.close()
-d.close()
-
-# Create the R file.
-r.write('d <- read.table("%s", header = FALSE)\n' % datafilename)
-r.write('bitmap("t%s-distribution.png",\n' % transaction_tag)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
 if num_colors is not None:
-    r.write('       color <- rainbow(%s)\n' % num_colors)
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V2)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V2,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "p",\n')
-if num_colors is not None and color is not None:
-    r.write('     col = color[%s],\n' % color)
-r.write('     main = "%s Transaction Response Time Distribution",\n' % \
-        transaction_name)
-r.write('     xlab = "Elapsed Time (seconds)",\n')
-r.write('     ylab = "Response Time (seconds)")\n')
-r.write('grid(col = "gray")\n')
-r.close()
+    color = r.rainbow(int(num_colors))
 
-system('(cd %s && R --slave --no-save < %s)' % (outputdir, rfilename))
+if num_colors is not None and color is not None:
+    col = color[int(color_index)]
+else:
+    col = 0
+
+r.bitmap('%s/t%s-distribution.png' % (outputdir, transaction_tag),
+         type = 'png16m', units = 'px', width = 1280, height = 800, res = 150,
+         taa = 4, gaa = 4)
+xmax = r.max(elapsed_time.rx(1))[0]
+ymax = r.max(subset.rx(4))[0]
+r.plot(elapsed_time[0], subset[3], xlim=r.c(0, xmax), ylim=r.c(0, ymax),
+       type='p', col=col,
+       main='%s Transaction Response Time Distribution' % transaction_name,
+       xlab='Elapsed Time (seconds)', ylab='Response Time (seconds)')
+r.grid(col='gray')
+r('dev.off()')
