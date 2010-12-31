@@ -10,14 +10,53 @@
 """
 This script assumes the output is in this format:
 
-SELECT TRANSACTION_TIMESTAMP(), datname, numbackends, xact_commit,
-       xact_rollback, blks_read, blks_hit
+SELECT EXTRACT(EPOCH FROM TRANSACTION_TIMESTAMP()), datname, numbackends,
+       xact_commit, xact_rollback, blks_read, blks_hit, tup_returned,
+       tup_fetched, tup_inserted, tup_updated, tup_deleted
 FROM pg_stat_database
 """
 
 import sys
 from os import makedirs, system
 from os.path import exists, realpath
+
+import rpy2.robjects as robjects
+from rpy2.robjects.vectors import DataFrame
+
+r = robjects.r
+
+def make_chart(tag, x, y, xmax, ymax_list, num_colors, title, ylabel, legend):
+    r.bitmap('%s/db-stat-%s-%s.png' % (outputdir, dbname, tag), type='png16m',
+             units='px', width=1280, height=800, res=150, taa=4, gaa=4)
+
+    color = r.rainbow(num_colors)
+    ymax = r.max(*ymax_list)[0]
+
+    # Plot the first set of data.
+    r.plot(x, y[0], xlim=r.c(0, xmax), ylim=r.c(0, ymax), type='b',
+           main=title, xlab='Elapsed Time (minutes)', ylab=ylabel, pch=1,
+           col=color[0])
+
+    # Plot the rest of the data.
+    y.pop(0)
+    index = 1
+    for i in y:
+        r.points(x, y=i, type='b', pch=index + 1, col=color[index])
+
+        index += 1
+
+    # Create a legend if there are any labels.
+    int_list = list()
+    index = 1
+    for i in legend:
+        int_list.append(index)
+        index += 1
+    if len(legend) > 0:
+        r.legend('topright', r.c(*legend), pch=r.c(*int_list), col=color)
+
+    r.grid(col='gray')
+    r('dev.off()')
+
 
 if len(sys.argv) != 4:
     print 'usage: %s <filename> <dbname> <outputdirectory>' % sys.argv[0]
@@ -33,10 +72,8 @@ infilename = sys.argv[1]
 dbname = sys.argv[2]
 outputdir = sys.argv[3]
 
-# Make sure we can oping the file to read in data.
-try:
-    f = open(infilename, 'r')
-except:
+# Make sure the file exists.
+if not exists(infilename):
     print 'cannot open file: %s' % infilename
     sys.exit(1)
 
@@ -51,315 +88,66 @@ if not exists(outputdir):
 
 outputdir = realpath(outputdir)
 
-datafilename = 'db-stats-%s.data' % dbname
-try:
-    d = open(outputdir + '/' + datafilename, 'w')
-except:
-    print 'cannot open file to write: %s/%s' % (outputdir, datafilename)
-    sys.exit(3)
-    
-rfilename = 'db-stats-%s.r' % dbname
-try:
-    r = open(outputdir + '/' + rfilename, 'w')
-except:
-    print 'cannot open file to write: %s/%s' % (outputdir, rfilename)
-    sys.exit(4)
+df = DataFrame.from_csvfile(infilename, header=False, sep='|')
+df = r.subset(df, df.rx('V2').ro == dbname)
+start_ctime = df[0][0]
+elapsed_time = df.rx(1).ro - start_ctime
 
-# Read in the data and write out the datafile for R.
+# There must be a more R-tistic way to do derive the data than iteratively.
+row = df.nrow - 1
+col = df.ncol - 1
+while row > 0:
+    # TODO: Why can I subtract a value from a column but I can't divide?  Must
+    # be a special syntax.  Convert the elapsed time from seconds to minutes.
+    elapsed_time[0][row] /= 60.0
 
-counter = 0
+    while col > 1:
+        df[col][row] -= df[col][row - 1]
+        col -= 1
+    row -= 1
+    col = df.ncol - 1
+col = df.ncol - 1
+while col > 1:
+    df[col][0] = 0
+    col -= 1
 
-numbackends = None
-xact_commit_old = None
-xact_rollback_old = None
-blks_read_old = None
-blks_hit_old = None
-# The following are for versions 8.3 and newer.
-tup_returned_old = None
-tup_fetched_old = None
-tup_inserted_old = None
-tup_updated_old = None
-tup_deleted_old = None
+if df.ncol == 7:
+    pg_version = 8.2
+elif df.ncol == 12:
+    pg_version = 8.3
+else:
+    print 'unknown number of columns'
+    sys.exit(1)
 
+xmax = r.max(elapsed_time.rx(1))[0]
 
-xact_commit_new = None
-xact_rollback_new = None
-blks_read_new = None
-blks_hit_new = None
-# The following are for versions 8.3 and newer.
-tup_returned_new = None
-tup_fetched_new = None
-tup_inserted_new = None
-tup_updated_new = None
-tup_deleted_new = None
+make_chart('connections', elapsed_time.rx2(1), [df.rx2('V3')], xmax,
+           df.rx('V3'), 1, 'Backends', 'Number of Backends', [])
 
-pg_version = 8.2
-for line in f:
-    c = line.strip().split('|')
+make_chart('commits', elapsed_time.rx2(1), [df.rx2('V4')], xmax,
+           df.rx('V4'), 1, 'Commits', 'Committed Transactions', [])
 
-    if len(c) != 7 and len(c) != 12:
-        continue
+make_chart('rollbacks', elapsed_time.rx2(1), [df.rx2('V5')], xmax,
+           df.rx('V5'), 1, 'Rollbacks', 'Rolledback Transactions', [])
 
-    if c[1] != dbname:
-        continue
+make_chart('blocks-read', elapsed_time.rx2(1), [df.rx2('V6')], xmax,
+           df.rx('V6'), 1, 'Blocks', 'Blocks Read', [])
 
-    numbackends = long(c[2])
-    xact_commit_new = long(c[3])
-    xact_rollback_new = long(c[4])
-    blks_read_new = long(c[5])
-    blks_hit_new = long(c[6])
-    if (len(c) == 12):
-        pg_version = 8.3
-        tup_returned_new = long(c[6])
-        tup_fetched_new = long(c[7])
-        tup_inserted_new = long(c[8])
-        tup_updated_new = long(c[9])
-        tup_deleted_new = long(c[10])
+make_chart('blocks-hit', elapsed_time.rx2(1), [df.rx2('V7')], xmax,
+           df.rx('V7'), 1, 'Blocks', 'Blocks Hit', [])
 
-    try:
-        if (len(c) == 7):
-            d.write('%d %d %d %d %d %d\n' % (counter,
-                    numbackends,
-                    xact_commit_new - xact_commit_old,
-                    xact_rollback_new - xact_rollback_old,
-                    blks_read_new - blks_read_old,
-                    blks_hit_new - blks_hit_old))
-        elif (len(c) == 12):
-            d.write('%d %d %d %d %d %d %d %d %d %d %d\n' % (counter,
-                    numbackends,
-                    xact_commit_new - xact_commit_old,
-                    xact_rollback_new - xact_rollback_old,
-                    blks_read_new - blks_read_old,
-                    blks_hit_new - blks_hit_old,
-                    tup_returned_new - tup_returned_old,
-                    tup_fetched_new - tup_fetched_old,
-                    tup_inserted_new- tup_inserted_old,
-                    tup_updated_new - tup_updated_old,
-                    tup_deleted_new - tup_deleted_old))
-    except:
-        # Instead of checking if the old values have been set, just trap for a
-        # math error and don't do anything.
-        pass
+if pg_version > 8.2:
+    make_chart('tup_returned', elapsed_time.rx2(1), [df.rx2('V8')], xmax,
+               df.rx('V8'), 1, 'Tuples', 'Tuples Returned', [])
 
-    xact_commit_old = xact_commit_new
-    xact_rollback_old = xact_rollback_new
-    blks_read_old = blks_read_new
-    blks_hit_old = blks_hit_new
-    if (len(c) == 12):
-        tup_returned_old = tup_returned_new
-        tup_fetched_old = tup_fetched_new
-        tup_inserted_old = tup_inserted_new
-        tup_updated_old = tup_updated_new
-        tup_deleted_old = tup_deleted_new
+    make_chart('tup_fetched', elapsed_time.rx2(1), [df.rx2('V9')], xmax,
+               df.rx('V9'), 1, 'Tuples', 'Tuples Fetched', [])
 
-    counter += 1
+    make_chart('tup_inserted', elapsed_time.rx2(1), [df.rx2('V10')], xmax,
+               df.rx('V10'), 1, 'Tuples', 'Tuples Inserted', [])
 
-f.close()
-d.close()
+    make_chart('tup_updated', elapsed_time.rx2(1), [df.rx2('V11')], xmax,
+               df.rx('V11'), 1, 'Tuples', 'Tuples Updated', [])
 
-# Create the R file.
-r.write('d <- read.table("%s", header = FALSE)\n' % datafilename)
-r.write('\n')
-r.write('bitmap("db-stats-%s-connections.png",\n' % dbname)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V2)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V2,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Database Connections (%s)",\n' % dbname)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Backends")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("db-stats-%s-commits.png",\n' % dbname)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V3)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V3,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Committed Transactions (%s)",\n' % dbname)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Commits")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("db-stats-%s-rollbacks.png",\n' % dbname)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V4)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V4,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Rolledback Transactions (%s)",\n' % dbname)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Rollbacks")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("db-stats-%s-blocks-read.png",\n' % dbname)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V5)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V5,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Blocks Read (%s)",\n' % dbname)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Blocks")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("db-stats-%s-blocks-hit.png",\n' % dbname)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V6)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V6,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Blocks Hit (%s)",\n' % dbname)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Blocks")\n')
-r.write('grid()\n')
-if pg_version >= 8.3:
-    r.write('\n')
-    r.write('bitmap("db-stats-%s-tup_returned.png",\n' % dbname)
-    r.write('       type = "png16m",\n')
-    r.write('       units = "px",\n')
-    r.write('       width = 1280,\n')
-    r.write('       height = 800,\n')
-    r.write('       res = 150,\n')
-    r.write('       taa = 4,\n')
-    r.write('       gaa = 4)\n')
-    r.write('xmax = max(d$V1)\n')
-    r.write('ymax = max(d$V7)\n')
-    r.write('plot(d$V1,\n')
-    r.write('     d$V7,\n')
-    r.write('     xlim = c(0, xmax),\n')
-    r.write('     ylim = c(0, ymax),\n')
-    r.write('     type = "b",\n')
-    r.write('     main = "Tuples Returned (%s)",\n' % dbname)
-    r.write('     xlab = "Elapsed Time (minutes)",\n')
-    r.write('     ylab = "Tuples")\n')
-    r.write('grid()\n')
-    r.write('\n')
-    r.write('bitmap("db-stats-%s-tup_fetched.png",\n' % dbname)
-    r.write('       type = "png16m",\n')
-    r.write('       units = "px",\n')
-    r.write('       width = 1280,\n')
-    r.write('       height = 800,\n')
-    r.write('       res = 150,\n')
-    r.write('       taa = 4,\n')
-    r.write('       gaa = 4)\n')
-    r.write('xmax = max(d$V1)\n')
-    r.write('ymax = max(d$V8)\n')
-    r.write('plot(d$V1,\n')
-    r.write('     d$V8,\n')
-    r.write('     xlim = c(0, xmax),\n')
-    r.write('     ylim = c(0, ymax),\n')
-    r.write('     type = "b",\n')
-    r.write('     main = "Tuples Fetched (%s)",\n' % dbname)
-    r.write('     xlab = "Elapsed Time (minutes)",\n')
-    r.write('     ylab = "Tuples")\n')
-    r.write('grid()\n')
-    r.write('\n')
-    r.write('bitmap("db-stats-%s-tup_inserted.png",\n' % dbname)
-    r.write('       type = "png16m",\n')
-    r.write('       units = "px",\n')
-    r.write('       width = 1280,\n')
-    r.write('       height = 800,\n')
-    r.write('       res = 150,\n')
-    r.write('       taa = 4,\n')
-    r.write('       gaa = 4)\n')
-    r.write('xmax = max(d$V1)\n')
-    r.write('ymax = max(d$V9)\n')
-    r.write('plot(d$V1,\n')
-    r.write('     d$V9,\n')
-    r.write('     xlim = c(0, xmax),\n')
-    r.write('     ylim = c(0, ymax),\n')
-    r.write('     type = "b",\n')
-    r.write('     main = "Tuples Inserted (%s)",\n' % dbname)
-    r.write('     xlab = "Elapsed Time (minutes)",\n')
-    r.write('     ylab = "Tuples")\n')
-    r.write('grid()\n')
-    r.write('\n')
-    r.write('bitmap("db-stats-%s-tup_updated.png",\n' % dbname)
-    r.write('       type = "png16m",\n')
-    r.write('       units = "px",\n')
-    r.write('       width = 1280,\n')
-    r.write('       height = 800,\n')
-    r.write('       res = 150,\n')
-    r.write('       taa = 4,\n')
-    r.write('       gaa = 4)\n')
-    r.write('xmax = max(d$V1)\n')
-    r.write('ymax = max(d$V10)\n')
-    r.write('plot(d$V1,\n')
-    r.write('     d$V10,\n')
-    r.write('     xlim = c(0, xmax),\n')
-    r.write('     ylim = c(0, ymax),\n')
-    r.write('     type = "b",\n')
-    r.write('     main = "Tuples Updated (%s)",\n' % dbname)
-    r.write('     xlab = "Elapsed Time (minutes)",\n')
-    r.write('     ylab = "Tuples")\n')
-    r.write('grid()\n')
-    r.write('\n')
-    r.write('bitmap("db-stats-%s-type_deleted.png",\n' % dbname)
-    r.write('       type = "png16m",\n')
-    r.write('       units = "px",\n')
-    r.write('       width = 1280,\n')
-    r.write('       height = 800,\n')
-    r.write('       res = 150,\n')
-    r.write('       taa = 4,\n')
-    r.write('       gaa = 4)\n')
-    r.write('xmax = max(d$V1)\n')
-    r.write('ymax = max(d$V11)\n')
-    r.write('plot(d$V1,\n')
-    r.write('     d$V11,\n')
-    r.write('     xlim = c(0, xmax),\n')
-    r.write('     ylim = c(0, ymax),\n')
-    r.write('     type = "b",\n')
-    r.write('     main = "Tuples Deleted (%s)",\n' % dbname)
-    r.write('     xlab = "Elapsed Time (minutes)",\n')
-    r.write('     ylab = "Tuples")\n')
-    r.write('grid()\n')
-r.close()
-
-system('(cd %s && R --slave --no-save < %s)' % (outputdir, rfilename))
+    make_chart('tup_deleted', elapsed_time.rx2(1), [df.rx2('V12')], xmax,
+               df.rx('V12'), 1, 'Tuples', 'Tuples Deleted', [])

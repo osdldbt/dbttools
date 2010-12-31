@@ -10,11 +10,11 @@
 """
 This script assumes the output is in this format:
 
-SELECT TRANSACTION_TIMESTAMP(), a.schemaname, a.relname, seq_scan, seq_tup_read,
-       idx_scan, idx_tup_fetch, n_tup_ins, n_tup_upd, n_tup_del, n_tup_hot_upd,
-       n_live_tup, n_dead_tup, heap_blks_read, heap_blks_hit, idx_blks_read,
-       idx_blks_hit, toast_blks_read, toast_blks_hit, tidx_blks_read,
-       tidx_blks_hit
+SELECT EXTRACT(EPOCH FROM TRANSACTION_TIMESTAMP()), a.schemaname, a.relname,
+       seq_scan, seq_tup_read, idx_scan, idx_tup_fetch, n_tup_ins, n_tup_upd,
+       n_tup_del, n_tup_hot_upd, n_live_tup, n_dead_tup, heap_blks_read,
+       heap_blks_hit, idx_blks_read, idx_blks_hit, toast_blks_read,
+       toast_blks_hit, tidx_blks_read, tidx_blks_hit
 FROM pg_statio_all_tables a, pg_stat_all_tables b
 WHERE a.relid = b.relid;
 """
@@ -22,6 +22,45 @@ WHERE a.relid = b.relid;
 import sys
 from os import makedirs, system
 from os.path import exists, realpath
+
+import rpy2.robjects as robjects
+from rpy2.robjects.vectors import DataFrame
+
+r = robjects.r
+
+def make_chart(tag, x, y, xmax, ymax_list, num_colors, title, ylabel, legend):
+    r.bitmap('%s/table-stat-%s-%s.png' % (outputdir, tablename, tag),
+             type='png16m', units='px', width=1280, height=800, res=150,
+             taa=4, gaa=4)
+
+    color = r.rainbow(num_colors)
+    ymax = r.max(*ymax_list)[0]
+
+    # Plot the first set of data.
+    r.plot(x, y[0], xlim=r.c(0, xmax), ylim=r.c(0, ymax), type='b',
+           main=title, xlab='Elapsed Time (minutes)', ylab=ylabel, pch=1,
+           col=color[0])
+
+    # Plot the rest of the data.
+    y.pop(0)
+    index = 1
+    for i in y:
+        r.points(x, y=i, type='b', pch=index + 1, col=color[index])
+
+        index += 1
+
+    # Create a legend if there are any labels.
+    int_list = list()
+    index = 1
+    for i in legend:
+        int_list.append(index)
+        index += 1
+    if len(legend) > 0:
+        r.legend('topright', r.c(*legend), pch=r.c(*int_list), col=color)
+
+    r.grid(col='gray')
+    r('dev.off()')
+
 
 if len(sys.argv) != 4:
     print 'usage: %s <filename> <tablename> <outputdirectory>' % sys.argv[0]
@@ -37,10 +76,8 @@ infilename = sys.argv[1]
 tablename = sys.argv[2]
 outputdir = sys.argv[3]
 
-# Make sure we can oping the file to read in data.
-try:
-    f = open(infilename, 'r')
-except:
+# Make sure the file exists.
+if not exists(infilename):
     print 'cannot open file: %s' % infilename
     sys.exit(1)
 
@@ -55,476 +92,83 @@ if not exists(outputdir):
 
 outputdir = realpath(outputdir)
 
-datafilename = 'table-stat-%s.data' % tablename
-try:
-    d = open(outputdir + '/' + datafilename, 'w')
-except:
-    print 'cannot open file to write: %s/%s' % (outputdir, datafilename)
-    sys.exit(3)
-    
-rfilename = 'table-stat-%s.r' % tablename
-try:
-    r = open(outputdir + '/' + rfilename, 'w')
-except:
-    print 'cannot open file to write: %s/%s' % (outputdir, rfilename)
-    sys.exit(4)
+df = DataFrame.from_csvfile(infilename, header=False, sep='|')
+df = r.subset(df, df.rx('V3').ro == tablename)
+start_ctime = df[0][0]
+elapsed_time = df.rx(1).ro - start_ctime
 
-# Read in the data and write out the datafile for R.
+# There must be a more R-tistic way to do derive the data than iteratively.
+row = df.nrow - 1
+col = df.ncol - 1
+while row > 0:
+    # TODO: Why can I subtract a value from a column but I can't divide?  Must
+    # be a special syntax.  Convert the elapsed time from seconds to minutes.
+    elapsed_time[0][row] /= 60.0
 
-counter = 0
+    while col > 2:
+        df[col][row] -= df[col][row - 1]
+        col -= 1
+    row -= 1
+    col = df.ncol - 1
+col = df.ncol - 1
+while col > 2:
+    df[col][0] = 0
+    col -= 1
 
-seq_scan_old = None
-seq_tup_read_old = None
-idx_scan_old = None
-idx_tup_fetch_old = None
-n_tup_ins_old = None
-n_tup_upd_old = None
-n_tup_del_old = None
-n_tup_hot_upd_old = None
-n_live_tup_old = None
-n_dead_tup_old = None
-heap_blks_read_old = None
-heap_blks_hit_old = None
-idx_blks_read_old = None
-idx_blks_hit_old = None
-toast_blks_read_old = None
-toast_blks_hit_old = None
-tidx_blks_read_old = None
-tidx_blks_hit_old = None
+xmax = r.max(elapsed_time.rx(1))[0]
 
-seq_scan_new = None
-seq_tup_read_new = None
-idx_scan_new = None
-idx_tup_fetch_new = None
-n_tup_ins_new = None
-n_tup_upd_new = None
-n_tup_del_new = None
-n_tup_hot_upd_new = None
-n_live_tup_new = None
-n_dead_tup_new = None
-heap_blks_read_new = None
-heap_blks_hit_new = None
-idx_blks_read_new = None
-idx_blks_hit_new = None
-toast_blks_read_new = None
-toast_blks_hit_new = None
-tidx_blks_read_new = None
-tidx_blks_hit_new = None
+make_chart('seq_scan', elapsed_time.rx2(1), [df.rx2('V4')], xmax,
+           df.rx('V4'), 1, 'Sequential Scans (%s)' % tablename,
+           'Sequential Scans', [])
 
-for line in f:
-    c = line.strip().split('|')
+make_chart('seq_tup_read', elapsed_time.rx2(1), [df.rx2('V5')], xmax,
+           df.rx('V5'), 1, 'Tuples Read by Sequential Scan (%s)' % tablename,
+           'Tuples', [])
 
-    if len(c) != 21:
-        continue
+make_chart('idx_scan', elapsed_time.rx2(1), [df.rx2('V6')], xmax,
+           df.rx('V6'), 1, 'Index Scans (%s)' % tablename,
+           'Index Scans', [])
 
-    if c[2] != tablename:
-        continue
+make_chart('idx_tup_fetch', elapsed_time.rx2(1), [df.rx2('V7')], xmax,
+           df.rx('V7'), 1, 'Tuples Read by Index Scans(%s)' % tablename,
+           'Tuples', [])
 
-    try:
-        seq_scan_new = long(c[3])
-    except:
-        seq_scan_new = long(0)
-    try:
-        seq_tup_read_new = long(c[4])
-    except:
-        seq_tup_read_new = long(0)
-    try:
-        idx_scan_new = long(c[5])
-    except:
-        idx_scan_new = long(0)
-    try:
-        idx_tup_fetch_new = long(c[6])
-    except:
-        idx_tup_fetch_new = long(0)
-    try:
-        n_tup_ins_new = long(c[7])
-    except:
-        n_tup_ins_new = long(0)
-    try:
-        n_tup_upd_new = long(c[8])
-    except:
-        n_tup_upd_new = long(0)
-    try:
-        n_tup_del_new = long(c[9])
-    except:
-        n_tup_del_new = long(0)
-    try:
-        n_tup_hot_upd_new = long(c[10])
-    except:
-        n_tup_hot_upd_new = long(0)
-    try:
-        n_live_tup_new = long(c[11])
-    except:
-        n_live_tup_new = long(0)
-    try:
-        n_dead_tup_new = long(c[12])
-    except:
-        n_dead_tup_new = long(0)
-    try:
-        heap_blks_read_new = long(c[13])
-    except:
-        heap_blks_read_new = long(0)
-    try:
-        heap_blks_hit_new = long(c[14])
-    except:
-        heap_blks_hit_new = long(0)
-    try:
-        idx_blks_read_new = long(c[15])
-    except:
-        idx_blks_read_new = long(0)
-    try:
-        idx_blks_hit_new = long(c[16])
-    except:
-        idx_blks_hit_new = long(0)
-    try:
-        toast_blks_read_new = long(c[17])
-    except:
-        toast_blks_read_new = long(0)
-    try:
-        toast_blks_hit_new = long(c[18])
-    except:
-        toast_blks_hit_new = long(0)
-    try:
-        tidx_blks_read_new = long(c[19])
-    except:
-        tidx_blks_read_new = long(0)
-    try:
-        tidx_blks_hit_new = long(c[20])
-    except:
-        tidx_blks_hit_new = long(0)
+make_chart('n_tup_ins', elapsed_time.rx2(1), [df.rx2('V8')], xmax,
+           df.rx('V8'), 1, 'Inserts (%s)' % tablename,
+           'Tuples', [])
 
-    try:
-        d.write('%d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d %d\n' % (
-                counter,
-                seq_scan_new - seq_scan_old,
-                seq_tup_read_new - seq_tup_read_old,
-                idx_scan_new - idx_scan_old,
-                idx_tup_fetch_new - idx_tup_fetch_old,
-                n_tup_ins_new - n_tup_ins_old,
-                n_tup_upd_new - n_tup_upd_old,
-                n_tup_del_new - n_tup_del_old,
-                n_tup_hot_upd_new - n_tup_hot_upd_old,
-                n_live_tup_new - n_live_tup_old,
-                n_dead_tup_new - n_dead_tup_old,
-                heap_blks_read_new - heap_blks_read_old,
-                heap_blks_hit_new - heap_blks_hit_old,
-                idx_blks_read_new - idx_blks_read_old,
-                idx_blks_hit_new - idx_blks_hit_old,
-                toast_blks_read_new - toast_blks_read_old,
-                toast_blks_hit_new - toast_blks_hit_old,
-                tidx_blks_read_new - tidx_blks_read_old,
-                tidx_blks_hit_new - tidx_blks_hit_old))
-    except:
-        # Instead of checking if the old values have been set, just trap for a
-        # math error and don't do anything.
-        pass
+make_chart('n_tup_upd', elapsed_time.rx2(1), [df.rx2('V9')], xmax,
+           df.rx('V9'), 1, 'Updates (%s)' % tablename,
+           'Tuples', [])
 
-    seq_scan_old = seq_scan_new
-    seq_tup_read_old = seq_tup_read_new
-    idx_scan_old = idx_scan_new
-    idx_tup_fetch_old = idx_tup_fetch_new
-    n_tup_ins_old = n_tup_ins_new
-    n_tup_upd_old = n_tup_upd_new
-    n_tup_del_old = n_tup_del_new
-    n_tup_hot_upd_old = n_tup_hot_upd_new
-    n_live_tup_old = n_live_tup_new
-    n_dead_tup_old = n_dead_tup_new
-    heap_blks_read_old = heap_blks_read_new
-    heap_blks_hit_old = heap_blks_hit_new
-    idx_blks_read_old = idx_blks_read_new
-    idx_blks_hit_old = idx_blks_hit_new
-    toast_blks_read_old = toast_blks_read_new
-    toast_blks_hit_old = toast_blks_hit_new
-    tidx_blks_read_old = tidx_blks_read_new
-    tidx_blks_hit_old = tidx_blks_hit_new
+make_chart('n_tup_del', elapsed_time.rx2(1), [df.rx2('V10')], xmax,
+           df.rx('V10'), 1, 'Deletes (%s)' % tablename,
+           'Tuples', [])
 
-    counter += 1
+make_chart('n_tup_hot_upd', elapsed_time.rx2(1), [df.rx2('V11')], xmax,
+           df.rx('V11'), 1, 'HOT Updates (%s)' % tablename,
+           'Tuples', [])
 
-f.close()
-d.close()
+make_chart('n_live_tup', elapsed_time.rx2(1), [df.rx2('V12')], xmax,
+           df.rx('V12'), 1, 'Live Tuples (%s)' % tablename,
+           'Tuples', [])
 
-# Create the R file.
-r.write('d <- read.table("%s", header = FALSE)\n' % datafilename)
-r.write('\n')
-r.write('bitmap("table-stat-%s-seq_scan.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V2)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V2,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Sequential Scans (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Sequential Scans")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-seq_tup_read.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V3)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V3,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Tuples Read by Sequential Scan (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Tuples")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-idx_scan.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V4)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V4,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Index Scans (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Index Scans")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-idx_tup_fetch.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V5)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V5,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Tuples Read by Index Scans (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Tuples")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-n_tup_ins.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V6)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V6,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Inserts (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Tuples")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-n_tup_upd.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V7)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V7,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Updates (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Tuples")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-n_tup_del.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V8)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V8,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Deletes (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Tuples")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-n_tup_hot_upd.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V9)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V9,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "HOT Updates (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Tuples")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-n_live_tup.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V10)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V10,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Live Tuples (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Tuples")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-n_dead_tup.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V11)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V11,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Dead Tuples (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Tuples")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-heap_blks_read.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V12)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V12,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Heap Blocks Read (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Blocks")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-heap_blks_hit.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V13)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V13,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Heap Blocks Hit (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Blocks")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-idx_blks_read.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V14)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V14,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Index Blocks Read (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Blocks")\n')
-r.write('grid()\n')
-r.write('\n')
-r.write('bitmap("table-stat-%s-idx_blks_hit.png",\n' % tablename)
-r.write('       type = "png16m",\n')
-r.write('       units = "px",\n')
-r.write('       width = 1280,\n')
-r.write('       height = 800,\n')
-r.write('       res = 150,\n')
-r.write('       taa = 4,\n')
-r.write('       gaa = 4)\n')
-r.write('xmax = max(d$V1)\n')
-r.write('ymax = max(d$V15)\n')
-r.write('plot(d$V1,\n')
-r.write('     d$V15,\n')
-r.write('     xlim = c(0, xmax),\n')
-r.write('     ylim = c(0, ymax),\n')
-r.write('     type = "b",\n')
-r.write('     main = "Index Blocks Hit (%s)",\n' % tablename)
-r.write('     xlab = "Elapsed Time (minutes)",\n')
-r.write('     ylab = "Number of Blocks")\n')
-r.write('grid()\n')
-r.close()
+make_chart('n_dead_tup', elapsed_time.rx2(1), [df.rx2('V13')], xmax,
+           df.rx('V13'), 1, 'Dead Tuples (%s)' % tablename,
+           'Tuples', [])
 
-system('(cd %s && R --slave --no-save < %s)' % (outputdir, rfilename))
+make_chart('heap_blks_read', elapsed_time.rx2(1), [df.rx2('V14')], xmax,
+           df.rx('V14'), 1, 'Heap Blocks Read (%s)' % tablename,
+           'Blocks', [])
+
+make_chart('heap_blks_hit', elapsed_time.rx2(1), [df.rx2('V15')], xmax,
+           df.rx('V15'), 1, 'Heap Blocks Hit (%s)' % tablename,
+           'Blocks', [])
+
+make_chart('idx_blks_read', elapsed_time.rx2(1), [df.rx2('V16')], xmax,
+           df.rx('V16'), 1, 'Index Blocks Read (%s)' % tablename,
+           'Blocks', [])
+
+make_chart('idx_blks_hit', elapsed_time.rx2(1), [df.rx2('V17')], xmax,
+           df.rx('V17'), 1, 'Index Blocks Hit (%s)' % tablename,
+           'Blocks', [])
