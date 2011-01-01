@@ -124,28 +124,28 @@ elif format == 1 or format == 2:
     # this workload will never run on a VM host where % steal is used.
 
 # Transform the raw data into Python lists before passing them to R.
-counter = 1
+counter = 0
 data = dict()
 # TODO: Initialize the data dict() based on the vmstat format identified.
-data['elapsed_time'] = [0]
-data['r'] = [c_r]
-data['b'] = [c_b]
-data['swpd'] = [c_swpd]
-data['free'] = [c_free]
-data['buff'] = [c_buff]
-data['cache'] = [c_cache]
-data['si'] = [c_si]
-data['so'] = [c_so]
-data['bi'] = [c_bi]
-data['bo'] = [c_bo]
+data['elapsed_time'] = list()
+data['r'] = list()
+data['b'] = list()
+data['swpd'] = list()
+data['free'] = list()
+data['buff'] = list()
+data['cache'] = list()
+data['si'] = list()
+data['so'] = list()
+data['bi'] = list()
+data['bo'] = list()
 # Somewhere betweeh python 2.4 (maybe other version) and R doesn't like 'in' as
 # a column name.
-data['intr'] = [c_in]
-data['cs'] = [c_cu]
-data['us'] = [c_us]
-data['sy'] = [c_sy]
-data['id'] = [c_id]
-data['wa'] = [c_wa]
+data['intr'] = list()
+data['cs'] = list()
+data['us'] = list()
+data['sy'] = list()
+data['id'] = list()
+data['wa'] = list()
 for line in f:
     c = line.strip().split()
 

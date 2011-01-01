@@ -152,7 +152,7 @@ elif format == 1:
 # Read in the file and build up the dictionaries for each column of data from
 # iostat.
 
-d_x = [0, 1]
+d_x = [0]
 d_rrqms = dict()
 d_wrqms = dict()
 d_rs = dict()
@@ -168,7 +168,7 @@ d_util = dict()
 # Build a dict of dicts.  Why?  Because I fear hot swappable and nfs devices
 # coming and going.
 
-count = 1
+count = 0
 for line in f:
     c = line.split()
 
@@ -191,17 +191,17 @@ for line in f:
     device = sub('-', '.', device)
 
     if device not in d_rrqms:
-        d_rrqms[device] = [0]
-        d_wrqms[device] = [0]
-        d_rs[device] = [0]
-        d_ws[device] = [0]
-        d_rsecs[device] = [0]
-        d_wsecs[device] = [0]
-        d_avgrqsz[device] = [0]
-        d_avgqusz[device] = [0]
-        d_await[device] = [0]
-        d_svctm[device] = [0]
-        d_util[device] = [0]
+        d_rrqms[device] = list()
+        d_wrqms[device] = list()
+        d_rs[device] = list()
+        d_ws[device] = list()
+        d_rsecs[device] = list()
+        d_wsecs[device] = list()
+        d_avgrqsz[device] = list()
+        d_avgqusz[device] = list()
+        d_await[device] = list()
+        d_svctm[device] = list()
+        d_util[device] = list()
 
     d_rrqms[device].append(c[c_rrqms])
     d_wrqms[device].append(c[c_wrqms])
