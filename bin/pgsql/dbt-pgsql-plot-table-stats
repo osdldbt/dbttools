@@ -95,16 +95,12 @@ outputdir = realpath(outputdir)
 df = DataFrame.from_csvfile(infilename, header=False, sep='|')
 df = r.subset(df, df.rx('V3').ro == tablename)
 start_ctime = df[0][0]
-elapsed_time = df.rx(1).ro - start_ctime
+elapsed_time = (df.rx(1).ro - start_ctime).ro / r['as.numeric'](60)
 
 # There must be a more R-tistic way to do derive the data than iteratively.
 row = df.nrow - 1
 col = df.ncol - 1
 while row > 0:
-    # TODO: Why can I subtract a value from a column but I can't divide?  Must
-    # be a special syntax.  Convert the elapsed time from seconds to minutes.
-    elapsed_time[0][row] /= 60.0
-
     while col > 2:
         df[col][row] -= df[col][row - 1]
         col -= 1
