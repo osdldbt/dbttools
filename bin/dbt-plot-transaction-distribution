@@ -14,7 +14,7 @@ from os.path import exists, realpath
 import rpy2.robjects as robjects
 from rpy2.robjects.vectors import DataFrame
 
-if len(sys.argv) not in [5, 7]:
+if len(sys.argv) not in [6, 8]:
     print 'Create a distribution plot of a transaction.'
     print 'usage: %s <transaction name> <transaction tag> <mix.log> ' % \
             sys.argv[0]
@@ -24,6 +24,7 @@ if len(sys.argv) not in [5, 7]:
     print '    <transaction tag> - ID used in the mix.log file'
     print '    <mix.log> - full path to the mix.log file'
     print '    <output directory> - location to write output files'
+    print '    <x scale> - sec (seconds) or min (minutes)'
     print
     print 'Will attempt to create <output directory> if it does not exist.'
     sys.exit(1)
@@ -32,11 +33,16 @@ transaction_name = sys.argv[1]
 transaction_tag = sys.argv[2]
 infilename = sys.argv[3]
 outputdir = sys.argv[4]
+xscale = sys.argv[5]
+
+if xscale not in ['sec', 'min']:
+    print 'invalid x scale'
+    sys.exit(1)
 
 # TODO: Secret optional color arguments for R. Make less secret...
 try:
-    num_colors = sys.argv[5]
-    color_index = sys.argv[6]
+    num_colors = sys.argv[6]
+    color_index = sys.argv[7]
 except:
     num_colors = None
     color_index = None
@@ -66,9 +72,14 @@ outputdir = realpath(outputdir)
 df = DataFrame.from_csvfile(infilename, header=False)
 subset = r.subset(df, df.rx('V2').ro == transaction_tag)
 
-start_ctime = df[0][0]
+start_ctime = r['as.numeric'](df[0][0])
 
-elapsed_time = subset.rx(1).ro - start_ctime
+if xscale == 'min':
+    xlabel = 'Elapsed Time (minutes)'
+    elapsed_time = (subset.rx(1).ro - start_ctime).ro / r['as.numeric'](60)
+else:
+    xlabel = 'Elapsed Time (seconds'
+    elapsed_time = subset.rx(1).ro - start_ctime
 
 if num_colors is not None:
     color = r.rainbow(int(num_colors))
@@ -86,6 +97,6 @@ ymax = r.max(subset.rx(4))[0]
 r.plot(elapsed_time[0], subset[3], xlim=r.c(0, xmax), ylim=r.c(0, ymax),
        type='p', col=col,
        main='%s Transaction Response Time Distribution' % transaction_name,
-       xlab='Elapsed Time (seconds)', ylab='Response Time (seconds)')
+       xlab=xlabel, ylab='Response Time (seconds)')
 r.grid(col='gray')
 r('dev.off()')
