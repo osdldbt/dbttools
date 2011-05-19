@@ -107,7 +107,10 @@ while row > 0:
     col = df.ncol - 1
 col = df.ncol - 1
 while col > 0: 
-    df[col][0] = 0
+    try:
+        df[col][0] = 0
+    except:
+        df[col][0] = 0.0
     col -= 1
 
 xmax = r.max(elapsed_time.rx(1))[0]
