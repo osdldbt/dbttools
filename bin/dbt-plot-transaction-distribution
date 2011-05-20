@@ -78,7 +78,7 @@ if xscale == 'min':
     xlabel = 'Elapsed Time (minutes)'
     elapsed_time = (subset.rx(1).ro - start_ctime).ro / r['as.numeric'](60)
 else:
-    xlabel = 'Elapsed Time (seconds'
+    xlabel = 'Elapsed Time (seconds)'
     elapsed_time = subset.rx(1).ro - start_ctime
 
 if num_colors is not None:
