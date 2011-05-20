@@ -184,11 +184,12 @@ for line in f:
     if device_list is not None and c[0] not in device_list:
         continue
 
-    # R doesn't like '/' or '-' characters in the name, like how the cciss
+    # R doesn't like '!', '/' or '-' characters in the name, like how the cciss
     # driver and device mapper enumerates devices.  R will convert them to '.'
     # so just do it here so it's consistent everywhere.
     device = sub('/', '.', c[0])
     device = sub('-', '.', device)
+    device = sub('!', '.', device)
 
     if device not in d_rrqms:
         d_rrqms[device] = list()
