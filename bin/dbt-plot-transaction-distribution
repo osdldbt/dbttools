@@ -21,7 +21,7 @@ colnames(df)[4] <- 'response'
 
 # This will generate color options for markers in the mix log, manually
 # compendate.
-color <- rainbow(length(unique(df\$txn)) - 2)
+color <- cm.colors(length(unique(df\$txn)) - 2)
 
 df <- subset(df, df\$txn == "${TXN_TAG}")
 
