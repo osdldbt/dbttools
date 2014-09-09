@@ -6,10 +6,9 @@ PROJECT(DBTTOOLS)
 #
 
 INSTALL(PROGRAMS 
-        bin/dbt-plot-iostat
-        bin/dbt-plot-mpstat
+        bin/dbt-plot-sar-blockdev
+        bin/dbt-plot-sar-cpu
         bin/dbt-plot-transaction-distribution
-        bin/dbt-plot-vmstat
         bin/pgsql/dbt-pgsql-plot-database-stats
         bin/pgsql/dbt-pgsql-plot-index-stats
         bin/pgsql/dbt-pgsql-plot-table-stats
