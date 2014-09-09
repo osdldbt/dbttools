@@ -1,152 +1,87 @@
-#!/usr/bin/env python
-
+#!/bin/sh
 #
 # This file is released under the terms of the Artistic License.
 # Please see the file LICENSE, included in this package, for details.
 #
-# Copyright (C) 2010 Mark Wong
+# Copyright (C) 2010-2014 Mark Wong
+# Copyright (C) 2014      2ndQuadrant, Ltd.
 #
 
-"""
-This script assumes the output is in this format:
+CSVFILE=$1
+DBNAME=$2
+OUTPUTDIR=$3
 
-SELECT EXTRACT(EPOCH FROM TRANSACTION_TIMESTAMP()), datname, numbackends,
-       xact_commit, xact_rollback, blks_read, blks_hit, tup_returned,
-       tup_fetched, tup_inserted, tup_updated, tup_deleted
-FROM pg_stat_database
-"""
+R --slave --no-save << __EOF__
+df <- read.csv("$CSVFILE", header=T)
+df <- subset(df, df\$datname == "$DBNAME")
+starttime = df[1,]\$ctime
+df\$ctime <- (df\$ctime - starttime) / 60
 
-import sys
-from os import makedirs, system
-from os.path import exists, realpath
+# Calculate rate of change.
 
-import rpy2.robjects as robjects
-from rpy2.robjects.vectors import DataFrame
+tmp <- c(NA, df\$xact_commit[-nrow(df)])
+df\$xact_commit <- df\$xact_commit - tmp
 
-r = robjects.r
+tmp <- c(NA, df\$xact_rollback[-nrow(df)])
+df\$xact_rollback <- df\$xact_rollback - tmp
 
-def make_chart(tag, x, y, xmax, ymax_list, num_colors, title, ylabel, legend):
-    r.bitmap('%s/db-stat-%s-%s.png' % (outputdir, dbname, tag), type='png16m',
-             units='px', width=1280, height=800, res=150, taa=4, gaa=4)
+tmp <- c(NA, df\$blks_read[-nrow(df)])
+df\$blks_read <- df\$blks_read - tmp
 
-    color = r.rainbow(num_colors)
-    ymax = r.max(*ymax_list)[0]
+tmp <- c(NA, df\$blks_hit[-nrow(df)])
+df\$blks_hit <- df\$blks_hit - tmp
 
-    # Plot the first set of data.
-    r.plot(x, y[0], xlim=r.c(0, xmax), ylim=r.c(0, ymax), type='b',
-           main=title, xlab='Elapsed Time (minutes)', ylab=ylabel, pch=1,
-           col=color[0])
+tmp <- c(NA, df\$tup_returned[-nrow(df)])
+df\$tup_returned <- df\$tup_returned - tmp
 
-    # Plot the rest of the data.
-    y.pop(0)
-    index = 1
-    for i in y:
-        r.points(x, y=i, type='b', pch=index + 1, col=color[index])
+tmp <- c(NA, df\$tup_fetched[-nrow(df)])
+df\$tup_fetched <- df\$tup_fetched - tmp
 
-        index += 1
+tmp <- c(NA, df\$tup_inserted[-nrow(df)])
+df\$tup_inserted <- df\$tup_inserted - tmp
 
-    # Create a legend if there are any labels.
-    int_list = list()
-    index = 1
-    for i in legend:
-        int_list.append(index)
-        index += 1
-    if len(legend) > 0:
-        r.legend('topright', r.c(*legend), pch=r.c(*int_list), col=color)
+tmp <- c(NA, df\$tup_updated[-nrow(df)])
+df\$tup_updated <- df\$tup_updated - tmp
 
-    r.grid(col='gray')
-    r('dev.off()')
+tmp <- c(NA, df\$tup_deleted[-nrow(df)])
+df\$tup_deleted <- df\$tup_deleted - tmp
 
+bitmap("${OUTPUTDIR}/db-stat-${DBNAME}-connections.png",
+       type="png16m", units="px", width=1280, height=800, res=150, taa=4,
+       gaa=4)
+plot(df\$ctime, df\$numbackends,  xlim=c(0, max(df\$ctime)),
+     ylim=c(0, max(df\$numbackends)), type = "b", col = cm.colors(1),
+     main="Database ${DBNAME} Numer of Backends",
+     xlab="Elapsed Time (minutes)", ylab="Backends")
+grid(col="gray")
+invisible(dev.off())
 
-if len(sys.argv) != 4:
-    print 'usage: %s <filename> <dbname> <outputdirectory>' % sys.argv[0]
-    print
-    print '    <filename> - full path to the datafile file'
-    print '    <dbname> - name of database to plot stats for'
-    print '    <output directory> - location to write output files'
-    print
-    print 'Will attempt to create <output directory> if it does not exist.'
-    sys.exit(1)
+color <- cm.colors(2)
+pch <- c(1, 2)
 
-infilename = sys.argv[1]
-dbname = sys.argv[2]
-outputdir = sys.argv[3]
+bitmap("${OUTPUTDIR}/db-stat-${DBNAME}-xacts.png",
+       type="png16m", units="px", width=1280, height=800, res=150, taa=4,
+       gaa=4)
+plot(df\$ctime, df\$xact_commit,  xlim=c(0, max(df\$ctime)),
+     ylim=c(0, max(max(df\$xact_commit, na.rm = T),
+                   max(df\$xact_rollback, na.rm = T))),
+     type = "b", col = color[1], main="Database ${DBNAME} Transactions",
+     xlab="Elapsed Time (minutes)", ylab="Transactions", pch = pch[1])
+points(df\$ctime, df\$xact_rollback, type = "b", pch = pch[2], col=color[2])
+legend('topright', c("Commits", "Rollbacks"), pch = pch, col=color)
+grid(col="gray")
+invisible(dev.off())
 
-# Make sure the file exists.
-if not exists(infilename):
-    print 'cannot open file: %s' % infilename
-    sys.exit(1)
-
-# Make sure we can open the files to write to.
-
-if not exists(outputdir):
-    try:
-        makedirs(outputdir)
-    except:
-        print 'cannot create directory "%s"' % outputdir
-        sys.exit(2)
-
-outputdir = realpath(outputdir)
-
-df = DataFrame.from_csvfile(infilename, header=False, sep='|')
-df = r.subset(df, df.rx('V2').ro == dbname)
-start_ctime = df[0][0]
-elapsed_time = (df.rx(1).ro - start_ctime).ro / r['as.numeric'](60)
-
-# There must be a more R-tistic way to do derive the data than iteratively.
-row = df.nrow - 1
-col = df.ncol - 1
-while row > 0:
-    while col > 1:
-        df[col][row] -= df[col][row - 1]
-        col -= 1
-    row -= 1
-    col = df.ncol - 1
-col = df.ncol - 1
-while col > 1:
-    try:
-        df[col][0] = 0
-    except:
-        df[col][0] = 0.0
-    col -= 1
-
-if df.ncol == 7:
-    pg_version = 8.2
-elif df.ncol == 12:
-    pg_version = 8.3
-else:
-    print 'unknown number of columns'
-    sys.exit(1)
-
-xmax = r.max(elapsed_time.rx(1))[0]
-
-make_chart('connections', elapsed_time.rx2(1), [df.rx2('V3')], xmax,
-           df.rx('V3'), 1, 'Backends', 'Number of Backends', [])
-
-make_chart('commits', elapsed_time.rx2(1), [df.rx2('V4')], xmax,
-           df.rx('V4'), 1, 'Commits', 'Committed Transactions', [])
-
-make_chart('rollbacks', elapsed_time.rx2(1), [df.rx2('V5')], xmax,
-           df.rx('V5'), 1, 'Rollbacks', 'Rolledback Transactions', [])
-
-make_chart('blocks-read', elapsed_time.rx2(1), [df.rx2('V6')], xmax,
-           df.rx('V6'), 1, 'Blocks', 'Blocks Read', [])
-
-make_chart('blocks-hit', elapsed_time.rx2(1), [df.rx2('V7')], xmax,
-           df.rx('V7'), 1, 'Blocks', 'Blocks Hit', [])
-
-if pg_version > 8.2:
-    make_chart('tup_returned', elapsed_time.rx2(1), [df.rx2('V8')], xmax,
-               df.rx('V8'), 1, 'Tuples', 'Tuples Returned', [])
-
-    make_chart('tup_fetched', elapsed_time.rx2(1), [df.rx2('V9')], xmax,
-               df.rx('V9'), 1, 'Tuples', 'Tuples Fetched', [])
-
-    make_chart('tup_inserted', elapsed_time.rx2(1), [df.rx2('V10')], xmax,
-               df.rx('V10'), 1, 'Tuples', 'Tuples Inserted', [])
-
-    make_chart('tup_updated', elapsed_time.rx2(1), [df.rx2('V11')], xmax,
-               df.rx('V11'), 1, 'Tuples', 'Tuples Updated', [])
-
-    make_chart('tup_deleted', elapsed_time.rx2(1), [df.rx2('V12')], xmax,
-               df.rx('V12'), 1, 'Tuples', 'Tuples Deleted', [])
+bitmap("${OUTPUTDIR}/db-stat-${DBNAME}-blocks.png",
+       type="png16m", units="px", width=1280, height=800, res=150, taa=4,
+       gaa=4)
+plot(df\$ctime, df\$blks_read,  xlim=c(0, max(df\$ctime)),
+     ylim=c(0, max(max(df\$blks_read, na.rm = T),
+                   max(df\$blks_hit, na.rm = T))),
+     type = "b", col = color[1], main="Database ${DBNAME} Blocks",
+     xlab="Elapsed Time (minutes)", ylab="Blocks", pch = pch[1])
+points(df\$ctime, df\$blks_hit, type = "b", pch = pch[2], col=color[2])
+legend('topright', c("Read", "Hit"), pch = pch, col=color)
+grid(col="gray")
+invisible(dev.off())
+__EOF__
