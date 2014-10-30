@@ -11,6 +11,12 @@ CSVFILE=$1
 INDEXNAME=$2
 OUTPUTDIR=$3
 
+mkdir -p ${OUTPUTDIR}
+if [ ! -d "${OUTPUTDIR}" ]; then
+	echo "Failed to create directory ${OUTPUTDIR}"
+	exit 1
+fi
+
 R --slave --no-save << __EOF__
 df <- read.csv("$CSVFILE", header=T)
 df <- subset(df, df\$indexrelname == "${INDEXNAME}")
