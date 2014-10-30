@@ -83,7 +83,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-seq_scan.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$seq_scan, xlim=c(0, max(df\$ctime)),
-     ylim=c(0, max(df\$seq_scan, na.rm = T)), type = "b", col = cm.colors(1),
+     ylim=c(0, max(df\$seq_scan, na.rm = T)), type = "b", col = rainbow(1),
      main="Seqeuntial Scans (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Sequential Scans")
 grid(col="gray")
@@ -94,7 +94,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-seq_tup_read.png",
        gaa=4)
 plot(df\$ctime, df\$seq_tup_read, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$seq_tup_read, na.rm = T)), type = "b",
-     col = cm.colors(1), main="Tuples Read by Sequential Scan (${TABLENAME})",
+     col = rainbow(1), main="Tuples Read by Sequential Scan (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Tuples")
 grid(col="gray")
 invisible(dev.off())
@@ -103,7 +103,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-idx_scan.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$idx_scan, xlim=c(0, max(df\$ctime)),
-     ylim=c(0, max(df\$idx_scan, na.rm = T)), type = "b", col = cm.colors(1),
+     ylim=c(0, max(df\$idx_scan, na.rm = T)), type = "b", col = rainbow(1),
      main="Index Scans (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Index Scans")
 grid(col="gray")
@@ -114,7 +114,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-idx_tup_fetch.png",
        gaa=4)
 plot(df\$ctime, df\$idx_tup_fetch, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$idx_tup_fetch, na.rm = T)), type = "b",
-     col = cm.colors(1), main="Tuples Read by Index Scans (${TABLENAME})",
+     col = rainbow(1), main="Tuples Read by Index Scans (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Tuples")
 grid(col="gray")
 invisible(dev.off())
@@ -123,7 +123,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-n_tup_ins.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$n_tup_ins, xlim=c(0, max(df\$ctime)),
-     ylim=c(0, max(df\$n_tup_ins, na.rm = T)), type = "b", col = cm.colors(1),
+     ylim=c(0, max(df\$n_tup_ins, na.rm = T)), type = "b", col = rainbow(1),
      main="Inserts (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Tuples")
 grid(col="gray")
@@ -133,7 +133,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-n_tup_upd.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$n_tup_upd, xlim=c(0, max(df\$ctime)),
-     ylim=c(0, max(df\$n_tup_upd, na.rm = T)), type = "b", col = cm.colors(1),
+     ylim=c(0, max(df\$n_tup_upd, na.rm = T)), type = "b", col = rainbow(1),
      main="Updates (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Tuples")
 grid(col="gray")
@@ -143,7 +143,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-n_tup_del.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$n_tup_del, xlim=c(0, max(df\$ctime)),
-     ylim=c(0, max(df\$n_tup_del, na.rm = T)), type = "b", col = cm.colors(1),
+     ylim=c(0, max(df\$n_tup_del, na.rm = T)), type = "b", col = rainbow(1),
      main="Deletes (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Tuples")
 grid(col="gray")
@@ -154,7 +154,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-n_tup_hot_upd.png",
        gaa=4)
 plot(df\$ctime, df\$n_tup_hot_upd, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$n_tup_hot_upd, na.rm = T)), type = "b",
-     col = cm.colors(1), main="HOT Updates (${TABLENAME})",
+     col = rainbow(1), main="HOT Updates (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Tuples")
 grid(col="gray")
 invisible(dev.off())
@@ -163,7 +163,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-n_live_tup.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$n_live_tup, xlim=c(0, max(df\$ctime)),
-     ylim=c(0, max(df\$n_live_tup, na.rm = T)), type = "b", col = cm.colors(1),
+     ylim=c(0, max(df\$n_live_tup, na.rm = T)), type = "b", col = rainbow(1),
      main="HOT Updates (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Tuples")
 grid(col="gray")
@@ -173,7 +173,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-n_dead_tup.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$n_dead_tup, xlim=c(0, max(df\$ctime)),
-     ylim=c(0, max(df\$n_dead_tup, na.rm = T)), type = "b", col = cm.colors(1),
+     ylim=c(0, max(df\$n_dead_tup, na.rm = T)), type = "b", col = rainbow(1),
      main="Dead Tuples (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Tuples")
 grid(col="gray")
@@ -184,7 +184,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-heap_blks_read.png",
        gaa=4)
 plot(df\$ctime, df\$heap_blks_read, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$heap_blks_read, na.rm = T)), type = "b",
-     col = cm.colors(1), main="Heap Blocks Read (${TABLENAME})",
+     col = rainbow(1), main="Heap Blocks Read (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Blocks")
 grid(col="gray")
 invisible(dev.off())
@@ -194,7 +194,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-heap_blks_hit.png",
        gaa=4)
 plot(df\$ctime, df\$heap_blks_hit, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$heap_blks_hit, na.rm = T)), type = "b",
-     col = cm.colors(1), main="Heap Blocks Hit (${TABLENAME})",
+     col = rainbow(1), main="Heap Blocks Hit (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Blocks")
 grid(col="gray")
 invisible(dev.off())
@@ -204,7 +204,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-idx_blks_read.png",
        gaa=4)
 plot(df\$ctime, df\$idx_blks_read, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$idx_blks_read, na.rm = T)), type = "b",
-     col = cm.colors(1), main="Index Blocks Read (${TABLENAME})",
+     col = rainbow(1), main="Index Blocks Read (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Blocks")
 grid(col="gray")
 invisible(dev.off())
@@ -214,7 +214,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-idx_blks_hit.png",
        gaa=4)
 plot(df\$ctime, df\$idx_blks_hit, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$idx_blks_hit, na.rm = T)), type = "b",
-     col = cm.colors(1), main="Index Blocks Hit (${TABLENAME})",
+     col = rainbow(1), main="Index Blocks Hit (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Blocks")
 grid(col="gray")
 invisible(dev.off())
@@ -224,7 +224,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-toast_blks_read.png",
        gaa=4)
 plot(df\$ctime, df\$toast_blks_read, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$toast_blks_read, na.rm = T)), type = "b",
-     col = cm.colors(1), main="Toast Blocks Read (${TABLENAME})",
+     col = rainbow(1), main="Toast Blocks Read (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Blocks")
 grid(col="gray")
 invisible(dev.off())
@@ -234,7 +234,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-toast_blks_hit.png",
        gaa=4)
 plot(df\$ctime, df\$toast_blks_hit, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$toast_blks_hit, na.rm = T)), type = "b",
-     col = cm.colors(1), main="Toast Blocks Hit (${TABLENAME})",
+     col = rainbow(1), main="Toast Blocks Hit (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Blocks")
 grid(col="gray")
 invisible(dev.off())
@@ -244,7 +244,7 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-tidx_blks_read.png",
        gaa=4)
 plot(df\$ctime, df\$tidx_read, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$tidx_read, na.rm = T)), type = "b",
-     col = cm.colors(1), main="Toast Index Blocks Read (${TABLENAME})",
+     col = rainbow(1), main="Toast Index Blocks Read (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Blocks")
 grid(col="gray")
 invisible(dev.off())
@@ -254,14 +254,14 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-tidx_blks_hit.png",
        gaa=4)
 plot(df\$ctime, df\$tidx_blks_hit, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$tidx_blks_hit, na.rm = T)), type = "b",
-     col = cm.colors(1), main="Toast Index Blocks Hit (${TABLENAME})",
+     col = rainbow(1), main="Toast Index Blocks Hit (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Blocks")
 grid(col="gray")
 invisible(dev.off())
 
 # Group plots
 
-color = cm.colors(2)
+color = rainbow(2)
 pch <- c(1, 2)
 
 bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-scans.png",
@@ -270,14 +270,14 @@ bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-scans.png",
 plot(df\$ctime, df\$seq_scan, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(max(df\$seq_scan, na.rm = T),
                    max(df\$idx_scan, na.rm = T))),
-     type = "b", col = cm.colors(1), main="Scans on ${TABLENAME}",
+     type = "b", col = rainbow(1), main="Scans on ${TABLENAME}",
      xlab="Elapsed Time (minutes)", ylab="Number of Scans")
 points(df\$ctime, df\$idx_scan, type = "b", pch = pch[2], col=color[2])
 legend('topright', c("Table Scans", "Index Scans"), pch = pch, col=color)
 grid(col="gray")
 invisible(dev.off())
 
-color = cm.colors(6)
+color = rainbow(6)
 pch <- c(1, 6)
 
 bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-tup.png",
@@ -290,7 +290,7 @@ plot(df\$ctime, df\$seq_tup_read, xlim=c(0, max(df\$ctime)),
                    max(df\$n_tup_upd, na.rm = T),
                    max(df\$n_tup_del, na.rm = T),
                    max(df\$n_tup_hot_upd, na.rm = T))),
-     type = "b", col = cm.colors(1),
+     type = "b", col = rainbow(1),
      main="Tuples (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Tuples")
 points(df\$ctime, df\$idx_tup_fetch, type = "b", pch = pch[2], col=color[2])

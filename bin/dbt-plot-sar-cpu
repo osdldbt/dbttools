@@ -32,7 +32,7 @@ df.all <- subset(df, df\$CPU == -1)
 
 type <- c("X.user", "X.system", "X.iowait", "X.idle")
 label <- c("User", "System", "Iowait", "Idle")
-color <- cm.colors(4)
+color <- rainbow(4)
 pch <- seq.int(1, 4)
 
 bitmap("${OUTPUTDIR}/sar-cpu.png",
@@ -62,7 +62,7 @@ for (i in 0:lastcpu) {
 
   type <- c("X.user", "X.system", "X.iowait", "X.idle")
   label <- c("User", "System", "Iowait", "Idle")
-  color <- cm.colors(4)
+  color <- rainbow(4)
   pch <- seq.int(1, 4)
 
   bitmap(paste("${OUTPUTDIR}/sar-cpu", i, ".png", sep = ""),
@@ -86,7 +86,7 @@ for (i in 0:lastcpu) {
 
 # Plot % busy of all processors on the same chart.
 label <- sapply(seq.int(1, lastcpu + 1), as.character)
-color <- cm.colors(lastcpu + 1)
+color <- rainbow(lastcpu + 1)
 pch <- seq.int(1, lastcpu + 1)
 
 df\$X.idle <- 100 - df\$X.idle

@@ -56,13 +56,13 @@ bitmap("${OUTPUTDIR}/db-stat-${DBNAME}-connections.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$numbackends,  xlim=c(0, max(df\$ctime)),
-     ylim=c(0, max(df\$numbackends)), type = "b", col = cm.colors(1),
+     ylim=c(0, max(df\$numbackends)), type = "b", col = rainbow(1),
      main="Database ${DBNAME} Numer of Backends",
      xlab="Elapsed Time (minutes)", ylab="Backends")
 grid(col="gray")
 invisible(dev.off())
 
-color <- cm.colors(2)
+color <- rainbow(2)
 pch <- c(1, 2)
 
 bitmap("${OUTPUTDIR}/db-stat-${DBNAME}-xacts.png",

@@ -27,7 +27,7 @@ starttime = df[1,]\$timestamp
 df\$timestamp <- ceiling((df\$timestamp - starttime) / 60)
 devices <- sort(unique(df\$DEV))
 count <- length(devices)
-color <- cm.colors(count)
+color <- rainbow(count)
 pch <- seq.int(1, count)
 
 # Convert sectors to megabytes.
@@ -141,7 +141,7 @@ invisible(dev.off())
 # Plot megabytes read/write per device
 
 label <- c('Reads', 'Writes')
-color <- cm.colors(2)
+color <- rainbow(2)
 pch <- c(1, 2)
 for (dev in devices) {
   df.all <- subset(df, df\$DEV == dev)
