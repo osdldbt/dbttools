@@ -13,15 +13,21 @@ MIXLOG=$3
 OUTPUTDIR=$4
 COLOR=$5
 
+mkdir -p ${OUTPUTDIR}
+if [ ! -d "${OUTPUTDIR}" ]; then
+	echo "Failed to create directory ${OUTPUTDIR}"
+	exit 1
+fi
+
 R --slave --no-save << __EOF__
-df <- read.csv("$MIXLOG", header=F)
+df <- read.csv("${MIXLOG}", header=F)
 colnames(df)[1] <- 'ctime'
 colnames(df)[2] <- 'txn'
 colnames(df)[4] <- 'response'
 
 # This will generate color options for markers in the mix log, manually
 # compendate.
-color <- cm.colors(length(unique(df\$txn)) - 2)
+color <- rainbow(length(unique(df\$txn)) - 2)
 
 df <- subset(df, df\$txn == "${TXN_TAG}")
 
