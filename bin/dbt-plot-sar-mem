@@ -1,0 +1,41 @@
+#!/bin/sh
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2015      Mark Wong
+#               2015      2ndQuadrant, Ltd.
+#
+
+INPUTFILE=$1
+OUTPUTDIR=$2
+
+if [ $# -ne 2 ]; then
+	echo "Create a plot of memory statistics."
+	echo "usage: `basename $0` <sar-mem.csv> <output directory>"
+	echo
+	echo "    <sar-mem.csv> - full path to the sar-cpu.csv file"
+	echo "    <output directory> - location to write output files"
+	echo
+	echo "Will attempt to create <output directory> if it does not exist."
+	exit 1
+fi
+
+R --slave --no-save << __EOF__
+df <- read.csv("$INPUTFILE", sep=";", header=T)
+starttime = df[1,]\$timestamp
+df\$timestamp <- ceiling((df\$timestamp - starttime) / 60)
+
+# Plot all device utilization on a single chart.
+
+bitmap("$OUTPUTDIR/sar-mem-memused.png",
+       type="png16m", units="px", width=1280, height=800, res=150, taa=4,
+       gaa=4)
+plot(df\$timestamp, df\$X.memused,
+     ylim=c(0, 100), type = "b", col = rainbow(1),
+     main="Memory Utilization",
+     xlab="Elapsed Time (minutes)", ylab="% Utilization")
+
+grid(col="gray")
+invisible(dev.off())
+__EOF__
