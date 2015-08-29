@@ -40,7 +40,7 @@ bitmap("${OUTPUTDIR}/sar-cpu.png",
        gaa=4)
 plot(df.all\$timestamp, df.all\$X.user,
      ylim=c(0, 100), type = "b", col = color[1],
-     main="Processor Utilization",
+     main="Aggregated Processor Utilization",
      xlab="Elapsed Time (minutes)", ylab="% Utilization")
 
 for (i in 2:4) {
@@ -70,7 +70,7 @@ for (i in 0:lastcpu) {
          gaa=4)
   plot(df.all\$timestamp, df.all\$X.user,
        ylim=c(0, 100), type = "b", col = color[1],
-       main="Processor Utilization",
+	   main=paste("CPU ", i, " Processor Utilization"),
        xlab="Elapsed Time (minutes)", ylab="% Utilization")
 
   for (i in 2:4) {
