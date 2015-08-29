@@ -45,5 +45,5 @@ points(df\$timestamp, df\$pswpout.s, type = "b", pch = pch[2],
 legend('topright', label, pch=pch, col=color)
 
 grid(col="gray")
-dev.off()
+invisible(dev.off())
 __EOF__
