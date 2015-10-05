@@ -1,0 +1,70 @@
+#!/bin/sh
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2015      Mark Wong
+# Copyright (C) 2015      2ndQuadrant, Ltd.
+#
+
+if [ $# -ne 3 ]; then
+	echo "usage: `basename $0` <title> <index list file> <chart dir>"
+	exit 1
+fi
+
+TITLE=$1
+INDEXLISTFILE=$2
+PNGDIR=$3
+
+INDEXMETRICS=`(cd $PNGDIR && ls *.png) 2> /dev/null | sed -e "s/index-stat-.*-//" \
+		| sed -e "s/.png$//" | sort | uniq`
+
+# Create HTML page listing a indexes's stats.
+
+for INDEX in `cat $INDEXLISTFILE`; do
+	INDEXCHARTFILE="$PNGDIR/$INDEX-charts.html"
+	cat > $INDEXCHARTFILE << __EOF__
+<html>
+<head>
+<title>$TITLE $INDEX Index Charts</title>
+</head>
+<body>
+<h1>$TITLE $INDEX Index Charts</h1>
+__EOF__
+
+	for CHART in `(cd $PNGDIR && ls -v index-stat-$INDEX-*.png) 2> /dev/null`; do
+		cat >> $INDEXCHARTFILE << __EOF__
+<img src="`basename $CHART`" width="90%" />
+__EOF__
+	done
+
+	cat >> $INDEXCHARTFILE << __EOF__
+</body>
+</html>
+__EOF__
+done
+
+# Create HTML page showing all indexes for a metric.
+
+for METRIC in $INDEXMETRICS; do
+	METRICCHARTFILE="$PNGDIR/i_$METRIC-charts.html"
+	cat > $METRICCHARTFILE << __EOF__
+<html>
+<head>
+<title>$TITLE Index $METRIC Charts</title>
+</head>
+<body>
+<h1>$TITLE Index $METRIC Charts</h1>
+__EOF__
+
+	for INDEX in `cat $INDEXLISTFILE`; do
+		cat >> $METRICCHARTFILE << __EOF__
+<img src="index-stat-$INDEX-$METRIC.png" width="90%" />
+__EOF__
+	done
+
+	cat >> $METRICCHARTFILE << __EOF__
+</body>
+</html>
+__EOF__
+done
