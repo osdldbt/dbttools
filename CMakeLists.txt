@@ -12,8 +12,9 @@ INSTALL(PROGRAMS
         bin/dbt-plot-sar-net
         bin/dbt-plot-sar-swap
         bin/dbt-plot-transaction-distribution
-        bin/pgsql/dbt-pgsql-generate-table-html
+        bin/pgsql/dbt-pgsql-generate-db-html
         bin/pgsql/dbt-pgsql-generate-index-html
+        bin/pgsql/dbt-pgsql-generate-table-html
         bin/pgsql/dbt-pgsql-plot-database-stats
         bin/pgsql/dbt-pgsql-plot-index-stats
         bin/pgsql/dbt-pgsql-plot-table-stats
