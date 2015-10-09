@@ -1,0 +1,43 @@
+#!/bin/bash
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2015      Mark Wong
+# Copyright (C) 2015      2ndQuadrant, Ltd.
+#
+
+# FIXME: Surely there is a better way to process pidstat data, too bad it doesn't
+#        have a csv output option...
+
+if [ $# -ne 1 ]; then
+	echo "usage: `basename $0` <pidstat.txt>"
+	exit 1
+fi
+
+PIDSTATTXT=$1
+OUTDIR=`dirname $PIDSTATTXT`
+PIDSTATCSV="$OUTDIR/pidstat.csv"
+
+HEADER=`head -n 3 $PIDSTATTXT | tail -n 1`
+
+# Skip the first line, containing OS information, then strip all empty lines and
+# headers, strip leading and trailing whitespaces, then squeeze spaces into 
+# commas.  Prepend the header once at the top of the csv file.
+
+# Strip off leading # in the header.
+CSVHEADER=`echo "$HEADER" | tr -s ' ' ',' | cut -d ',' -f 2-`
+echo $CSVHEADER > $PIDSTATCSV
+
+COUNT=`echo $CSVHEADER | tr -cd , | wc -c`
+
+while read line; do
+	COMMAND=$line
+	for i in `seq 1 $COUNT`; do
+		COMMAND=`echo $COMMAND | awk '{$1=""; print $0}'`
+	done
+	COMMAND=`echo $COMMAND | awk '$1=$1'`
+	echo "`echo $line | tr -s ' ' ',' | cut -d ',' -f -$COUNT`,$COMMAND" \
+			>> $PIDSTATCSV
+done < <(tail -n+2 $PIDSTATTXT | grep -v -e '^$' | grep -v "$HEADER" \
+		| awk '$1=$1' )
