@@ -1,0 +1,60 @@
+#!/bin/sh
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2015      Mark Wong
+#               2015      2ndQuadrant, Ltd.
+#
+
+if [ $# -ne 3 ]; then
+	echo "Create a plot for a specified metric for all pids that match a command"
+	echo "usage: `basename $0` <pidstat.csv> <metric> <command>"
+	echo
+	echo "    <pidstat.csv> - full path to the pidstat.csv file"
+	echo "    <metric> - i.e. %CPU, kB_rd/s, cswch/s"
+	echo "    <command> - i.e. postgres"
+	echo
+	echo "Will attempt to create <output directory> if it does not exist."
+	exit 1
+fi
+
+INPUTFILE=$1
+METRIC=$2
+COMMAND=$3
+
+OUTDIR=`dirname $1`
+
+R --slave --no-save << __EOF__
+df <- read.csv("$INPUTFILE", header=T)
+starttime = df[1,]\$Time
+df\$Time <- ceiling((df\$Time - starttime) / 60)
+
+df.all <- subset(df, grepl("$COMMAND", df\$Command))
+
+pids <- sort(unique(df.all\$PID))
+count <- length(pids)
+color <- rainbow(count)
+pch <- seq.int(1, count)
+
+bitmap("$OUTDIR/pidstat-$METRIC.png",
+       type="png16m", units="px", width=1280, height=800, res=150, taa=4,
+       gaa=4)
+
+df.pid <- subset(df.all, df\$PID == pids[1])
+plot(df.pid\$Time, df.pid\$$METRIC,
+     xlim=c(0, max(df.all\$Time, na.rm=T)),
+     ylim=c(0, max(df.all\$$METRIC, na.rm=T)), type="b", col=color[1],
+     main="pidstat $METRIC $COMMAND",
+     xlab="Elapsed Time (minutes)", ylab="$METRIC")
+
+for (i in 2:count) {
+  df.pid <- subset(df.all, df\$PID == pids[i])
+  points(df.pid\$Time, df.pid\$$METRIC, type = "b", pch=pch[i], col=color[i])
+}
+
+legend('topright', sapply(pids, as.character), pch=pch, col=color)
+
+grid(col="gray")
+invisible(dev.off())
+__EOF__
