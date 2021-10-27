@@ -16,4 +16,4 @@ SET(CPACK_INSTALL_CMAKE_PROJECTS "")
 SET(CPACK_PACKAGE_DESCRIPTION_FILE "README")
 SET(CPACK_RESOURCE_FILE_LICENSE "LICENSE")
 
-SET(CPACK_IGNORE_FILES "CPackConfig.cmake;_CPack_Packages/;\\.swp$;/\\.git/;\\.tar.Z$;\\.tar.gz$;\\.tar.bz2$;README-CMAKE")
+SET(CPACK_IGNORE_FILES "CPackConfig.cmake;_CPack_Packages/;\\.swp$;/\\.git/;/\\.gitignore/;\\.tar.Z$;\\.tar.gz$;\\.tar.bz2$;README-CMAKE")

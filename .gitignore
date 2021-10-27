@@ -1,0 +1,16 @@
+# vim
+*.sw?
+tags
+
+# cmake
+CMakeCache.txt
+CMakeFiles
+Makefile
+cmake_install.cmake
+install_manifest.txt
+
+# cpack
+_CPack_Packages
+*-?.?.?.tar.Z
+*-?.?.?.tar.bz2
+*-?.?.?.tar.gz
