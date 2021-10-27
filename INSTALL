@@ -1,8 +1,9 @@
 Installing dbttools:
 
-    make install DESTDIR=/usr/local
+	cmake -H. -DCMAKE_INSTALL_PREFIX=/path
+    make install
 
-This will put all binaries in '/usr/local/bin'.
+This will put all binaries in '/path'.
 
 -----
 
