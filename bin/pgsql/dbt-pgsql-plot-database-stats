@@ -3,7 +3,7 @@
 # This file is released under the terms of the Artistic License.
 # Please see the file LICENSE, included in this package, for details.
 #
-# Copyright (C) 2010-2014 Mark Wong
+# Copyright (C) 2010-2021 Mark Wong
 # Copyright (C) 2014      2ndQuadrant, Ltd.
 #
 
@@ -13,6 +13,11 @@ OUTPUTDIR=$2
 mkdir -p ${OUTPUTDIR}
 if [ ! -d "${OUTPUTDIR}" ]; then
 	echo "Failed to create directory ${OUTPUTDIR}"
+	exit 1
+fi
+
+if [ "x$PGDATABASE" = "x" ]; then
+	echo "ERROR: PGDATABASE env variable not set"
 	exit 1
 fi
 
