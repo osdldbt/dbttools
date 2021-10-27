@@ -30,9 +30,9 @@ count <- length(devices)
 color <- rainbow(count)
 pch <- seq.int(1, count)
 
-# Convert sectors to megabytes.
-df\$rd_sec.s <- (df\$rd_sec.s * 512) / (1024 * 1024)
-df\$wr_sec.s <- (df\$wr_sec.s * 512) / (1024 * 1024)
+# Convert kilobytes to megabytes, without renaming the column...
+df\$rkB.s <- df\$rkB.s / 1024
+df\$wkB.s <- df\$wkB.s / 1024
 
 # Plot all device utilization on a single chart.
 
@@ -102,14 +102,14 @@ df.all <- subset(df, df\$DEV == devices[1])
 bitmap("${OUTPUTDIR}/sar-blockdev-avgqu.sz.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
-plot(df.all\$timestamp, df.all\$avgqu.sz,
-     ylim=c(0, max(df\$avgqu.sz)), type = "b", col = color[1],
+plot(df.all\$timestamp, df.all\$aqu.sz,
+     ylim=c(0, max(df\$aqu.sz)), type = "b", col = color[1],
      main="Average Queue Length",
      xlab="Elapsed Time (minutes)", ylab="Length")
 
 for (i in 2:count) {
   df.all <- subset(df, df\$DEV == devices[i])
-  points(df.all\$timestamp, df.all\$avgqu.sz, type = "b", pch = pch[i],
+  points(df.all\$timestamp, df.all\$aqu.sz, type = "b", pch = pch[i],
          col=color[i])
 }
 
@@ -122,14 +122,14 @@ df.all <- subset(df, df\$DEV == devices[1])
 bitmap("${OUTPUTDIR}/sar-blockdev-avgrq.sz.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
-plot(df.all\$timestamp, df.all\$avgrq.sz,
-     ylim=c(0, max(df\$avgrq.sz)), type = "b", col = color[1],
+plot(df.all\$timestamp, df.all\$areq.sz,
+     ylim=c(0, max(df\$areq.sz)), type = "b", col = color[1],
      main="Average Request Size",
      xlab="Elapsed Time (minutes)", ylab="Sectors")
 
 for (i in 2:count) {
   df.all <- subset(df, df\$DEV == devices[i])
-  points(df.all\$timestamp, df.all\$avgrq.sz, type = "b", pch = pch[i],
+  points(df.all\$timestamp, df.all\$areq.sz, type = "b", pch = pch[i],
          col=color[i])
 }
 
@@ -148,12 +148,12 @@ for (dev in devices) {
   bitmap(paste("${OUTPUTDIR}/sar-blockdev-", dev, "-rw.png", sep = ""),
          type="png16m", units="px", width=1280, height=800, res=150, taa=4,
          gaa=4)
-  plot(df.all\$timestamp, df.all\$rd_sec.s,
-       ylim=c(0, max(max(df.all\$rd_sec.s), max(df.all\$wr_sec.s))),
+  plot(df.all\$timestamp, df.all\$rkB.s,
+       ylim=c(0, max(max(df.all\$rkB.s), max(df.all\$wkB.s))),
        type = "b", col = color[1],
        main=paste("Block Device ", dev, " Read/Write", sep = ""),
        xlab="Elapsed Time (minutes)", ylab="MegaBytes/s")
-  points(df.all\$timestamp, df.all\$wr_sec.s, type = "b", pch = pch[2],
+  points(df.all\$timestamp, df.all\$wkB.s, type = "b", pch = pch[2],
          col=color[2])
 
   legend('topright', label, pch=pch, col=color)
