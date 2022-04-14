@@ -3,17 +3,62 @@
 # This file is released under the terms of the Artistic License.
 # Please see the file LICENSE, included in this package, for details.
 #
-# Copyright (C) 2010-2014 Mark Wong
-#               2014      2ndQuadrant, Ltd.
+# Copyright (C) 2014      2ndQuadrant, Ltd.
+#               2010-2022 Mark Wong
 #
 
-CSVFILE=$1
-INDEXNAME=$2
-OUTPUTDIR=$3
+usage()
+{
+	echo "`basename $0` is the PostgreSQL index statistics chart generator"
+	echo ""
+	echo "Usage:"
+	echo "  `basename $0` [OPTION]"
+	echo ""
+	echo "Options:"
+	echo "  -i CSV      path to CSV file"
+	echo "  -n INDEX    index name"
+	echo "  -o PATH     output directory"
+}
 
-mkdir -p ${OUTPUTDIR}
-if [ ! -d "${OUTPUTDIR}" ]; then
-	echo "Failed to create directory ${OUTPUTDIR}"
+while getopts "hi:n:o:" opt; do
+	case $opt in
+	h)
+		usage
+		exit 1
+		;;
+	i)
+		CSVFILE=$OPTARG
+		;;
+	n)
+		INDEXNAME=$OPTARG
+		;;
+	o)
+		OUTDIR=$OPTARG
+		mkdir -p $OUTDIR
+		if [ ! -d "$OUTDIR" ]; then
+			echo "ERROR: Failed to create directory $OUTDIR"
+			exit 1
+		fi
+		;;
+	\?)
+		usage
+		exit 1
+		;;
+	esac
+done
+
+if [ "x$CSVFILE" = "x" ]; then
+	error "ERROR: input CSV file was not specified with -i"
+	exit 1
+fi
+
+if [ "x$OUTDIR" = "x" ]; then
+	error "ERROR: output directory was not specified with -o"
+	exit 1
+fi
+
+if [ "x$INDEXNAME" = "x" ]; then
+	echo "ERROR: index name not set, use -n"
 	exit 1
 fi
 
@@ -40,7 +85,7 @@ df\$idx_blks_read <- df\$idx_blks_read - tmp
 tmp <- c(NA, df\$idx_blks_hit[-nrow(df)])
 df\$idx_blks_hit <- df\$idx_blks_hit - tmp
 
-bitmap("${OUTPUTDIR}/index-stat-${INDEXNAME}-idx_scan.png",
+bitmap("${OUTDIR}/index-stat-${INDEXNAME}-idx_scan.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$idx_scan, xlim=c(0, max(df\$ctime)),
@@ -50,7 +95,7 @@ plot(df\$ctime, df\$idx_scan, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/index-stat-${INDEXNAME}-idx_tup_read.png",
+bitmap("${OUTDIR}/index-stat-${INDEXNAME}-idx_tup_read.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$idx_tup_read, xlim=c(0, max(df\$ctime)),
@@ -60,7 +105,7 @@ plot(df\$ctime, df\$idx_tup_read, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/index-stat-${INDEXNAME}-idx_tup_fetch.png",
+bitmap("${OUTDIR}/index-stat-${INDEXNAME}-idx_tup_fetch.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$idx_tup_fetch, xlim=c(0, max(df\$ctime)),
@@ -70,7 +115,7 @@ plot(df\$ctime, df\$idx_tup_fetch, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/index-stat-${INDEXNAME}-idx_blks_read.png",
+bitmap("${OUTDIR}/index-stat-${INDEXNAME}-idx_blks_read.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$idx_blks_read, xlim=c(0, max(df\$ctime)),
@@ -80,7 +125,7 @@ plot(df\$ctime, df\$idx_blks_read, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/index-stat-${INDEXNAME}-idx_blks_hit.png",
+bitmap("${OUTDIR}/index-stat-${INDEXNAME}-idx_blks_hit.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$idx_blks_hit, xlim=c(0, max(df\$ctime)),
@@ -95,7 +140,7 @@ invisible(dev.off())
 color <- rainbow(2)
 pch <- c(1, 2)
 
-bitmap("${OUTPUTDIR}/index-stat-${INDEXNAME}-idx_blks.png",
+bitmap("${OUTDIR}/index-stat-${INDEXNAME}-idx_blks.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$idx_blks_read, xlim=c(0, max(df\$ctime)),

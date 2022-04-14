@@ -3,18 +3,65 @@
 # This file is released under the terms of the Artistic License.
 # Please see the file LICENSE, included in this package, for details.
 #
-# Copyright (C) 2010-2014 Mark Wong
-#               2014      2ndQuadrant, Ltd.
+# Copyright (C) 2014      2ndQuadrant, Ltd.
+#               2010-2022 Mark Wong
 #
 
-CSVFILE=$1
-TABLENAME=$2
-OUTPUTDIR=$3
+usage()
+{
+	echo "`basename $0` is the PostgreSQL table statistics chart generator"
+	echo ""
+	echo "Usage:"
+	echo "  `basename $0` [OPTION]"
+	echo ""
+	echo "Options:"
+	echo "  -i CSV      path to CSV file"
+	echo "  -n TABLE    table name"
+	echo "  -o PATH     output directory"
+}
 
-mkdir -p ${OUTPUTDIR}
-if [ ! -d "${OUTPUTDIR}" ]; then
-	echo "Failed to create directory ${OUTPUTDIR}"
+error() {
+	echo "ERROR: $@"
 	exit 1
+}
+
+while getopts "hi:n:o:" opt; do
+	case $opt in
+	h)
+		usage
+		exit 1
+		;;
+	i)
+		CSVFILE=$OPTARG
+		;;
+	n)
+		TABLENAME=$OPTARG
+		;;
+	o)
+		OUTDIR=$OPTARG
+		mkdir -p $OUTDIR
+		if [ ! -d "$OUTDIR" ]; then
+			echo "ERROR: Failed to create directory $OUTDIR"
+			exit 1
+		fi
+		;;
+	\?)
+		usage
+		exit 1
+		;;
+	esac
+done
+
+if [ "x$CSVFILE" = "x" ]; then
+	error "input CSV file was not specified with -i"
+fi
+
+if [ "x$OUTDIR" = "x" ]; then
+	error "output directory was not specified with -o"
+fi
+
+if [ "x$TABLENAME" = "x" ]; then
+	error "table name not set, use -n"
 fi
 
 R --slave --no-save << __EOF__
@@ -79,7 +126,7 @@ df\$tidx_blks_read <- df\$tidx_blks_read - tmp
 tmp <- c(NA, df\$tidx_blks_hit[-nrow(df)])
 df\$tidx_blks_hit <- df\$tidx_blks_hit - tmp
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-seq_scan.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-seq_scan.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$seq_scan, xlim=c(0, max(df\$ctime)),
@@ -89,7 +136,7 @@ plot(df\$ctime, df\$seq_scan, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-seq_tup_read.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-seq_tup_read.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$seq_tup_read, xlim=c(0, max(df\$ctime)),
@@ -99,7 +146,7 @@ plot(df\$ctime, df\$seq_tup_read, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-idx_scan.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-idx_scan.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$idx_scan, xlim=c(0, max(df\$ctime)),
@@ -109,7 +156,7 @@ plot(df\$ctime, df\$idx_scan, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-idx_tup_fetch.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-idx_tup_fetch.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$idx_tup_fetch, xlim=c(0, max(df\$ctime)),
@@ -119,7 +166,7 @@ plot(df\$ctime, df\$idx_tup_fetch, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-n_tup_ins.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-n_tup_ins.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$n_tup_ins, xlim=c(0, max(df\$ctime)),
@@ -129,7 +176,7 @@ plot(df\$ctime, df\$n_tup_ins, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-n_tup_upd.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-n_tup_upd.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$n_tup_upd, xlim=c(0, max(df\$ctime)),
@@ -139,7 +186,7 @@ plot(df\$ctime, df\$n_tup_upd, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-n_tup_del.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-n_tup_del.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$n_tup_del, xlim=c(0, max(df\$ctime)),
@@ -149,7 +196,7 @@ plot(df\$ctime, df\$n_tup_del, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-n_tup_hot_upd.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-n_tup_hot_upd.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$n_tup_hot_upd, xlim=c(0, max(df\$ctime)),
@@ -159,7 +206,7 @@ plot(df\$ctime, df\$n_tup_hot_upd, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-n_live_tup.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-n_live_tup.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$n_live_tup, xlim=c(0, max(df\$ctime)),
@@ -169,7 +216,7 @@ plot(df\$ctime, df\$n_live_tup, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-n_dead_tup.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-n_dead_tup.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$n_dead_tup, xlim=c(0, max(df\$ctime)),
@@ -179,7 +226,7 @@ plot(df\$ctime, df\$n_dead_tup, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-heap_blks_read.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-heap_blks_read.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$heap_blks_read, xlim=c(0, max(df\$ctime)),
@@ -189,7 +236,7 @@ plot(df\$ctime, df\$heap_blks_read, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-heap_blks_hit.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-heap_blks_hit.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$heap_blks_hit, xlim=c(0, max(df\$ctime)),
@@ -199,7 +246,7 @@ plot(df\$ctime, df\$heap_blks_hit, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-idx_blks_read.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-idx_blks_read.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$idx_blks_read, xlim=c(0, max(df\$ctime)),
@@ -209,7 +256,7 @@ plot(df\$ctime, df\$idx_blks_read, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-idx_blks_hit.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-idx_blks_hit.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$idx_blks_hit, xlim=c(0, max(df\$ctime)),
@@ -219,7 +266,7 @@ plot(df\$ctime, df\$idx_blks_hit, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-toast_blks_read.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-toast_blks_read.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$toast_blks_read, xlim=c(0, max(df\$ctime)),
@@ -229,7 +276,7 @@ plot(df\$ctime, df\$toast_blks_read, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-toast_blks_hit.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-toast_blks_hit.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$toast_blks_hit, xlim=c(0, max(df\$ctime)),
@@ -239,7 +286,7 @@ plot(df\$ctime, df\$toast_blks_hit, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-tidx_blks_read.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-tidx_blks_read.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$tidx_read, xlim=c(0, max(df\$ctime)),
@@ -249,7 +296,7 @@ plot(df\$ctime, df\$tidx_read, xlim=c(0, max(df\$ctime)),
 grid(col="gray")
 invisible(dev.off())
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-tidx_blks_hit.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-tidx_blks_hit.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$tidx_blks_hit, xlim=c(0, max(df\$ctime)),
@@ -264,7 +311,7 @@ invisible(dev.off())
 color = rainbow(2)
 pch <- c(1, 2)
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-scans.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-scans.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$seq_scan, xlim=c(0, max(df\$ctime)),
@@ -280,7 +327,7 @@ invisible(dev.off())
 color = rainbow(6)
 pch <- c(1, 6)
 
-bitmap("${OUTPUTDIR}/table-stat-${TABLENAME}-tup.png",
+bitmap("${OUTDIR}/table-stat-${TABLENAME}-tup.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$ctime, df\$seq_tup_read, xlim=c(0, max(df\$ctime)),
