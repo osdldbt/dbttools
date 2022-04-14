@@ -11,6 +11,8 @@ install_manifest.txt
 
 # cpack
 _CPack_Packages
+CPackConfig.cmake
+CPackSourceConfig.cmake
 *-?.?.?.tar.Z
 *-?.?.?.tar.bz2
 *-?.?.?.tar.gz
