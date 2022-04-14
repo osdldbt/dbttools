@@ -22,8 +22,11 @@ INSTALL(PROGRAMS
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-distribution
         ${CMAKE_SOURCE_DIR}/bin/dbt-process-pidstat
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-db-html
+        ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-db-report
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-index-html
+        ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-index-report
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-table-html
+        ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-table-report
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-plot-database-stats
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-plot-index-stats
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-plot-table-stats

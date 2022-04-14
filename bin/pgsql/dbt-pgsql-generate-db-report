@@ -1,0 +1,65 @@
+#!/bin/sh
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2022      Mark Wong
+#
+
+usage()
+{
+	echo "`basename $0` is the PostgreSQL database statistics rst report generator"
+	echo ""
+	echo "Usage:"
+	echo "  `basename $0` [OPTION]"
+	echo ""
+	echo "Options:"
+	echo "  -i PATH     path to input files"
+	echo "  -t TITLE    title of the report"
+}
+
+image_links()
+{
+	FILES=`ls -v ${INDIR}/*.png 2> /dev/null`
+	if [ -n "$FILES" ]; then
+		for CHART in $FILES; do
+			CHART="$URL`basename $CHART`"
+			echo ".. image:: $CHART"
+			echo "   :target: $CHART"
+			echo "   :width: 100%"
+			echo ""
+		done
+	fi
+}
+
+while getopts "hi:t:" opt; do
+	case $opt in
+	i)
+		INDIR=$OPTARG
+		;;
+	h)
+		usage
+		exit 1
+		;;
+	t)
+		TITLE=$OPTARG
+		;;
+	\?)
+		usage
+		exit 1
+		;;
+	esac
+done
+
+if [ "x$INDIR" = "x" ]; then
+	error "Error: input was not specified with -i"
+	exit 1
+fi
+
+cat << __EOF__ > ${INDIR}/index.rst
+================================================================================
+$TITLE Database Charts
+================================================================================
+
+$(image_links)
+__EOF__

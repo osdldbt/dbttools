@@ -1,0 +1,117 @@
+#!/bin/sh
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2022      Mark Wong
+#
+
+usage()
+{
+	echo "`basename $0` is the PostgreSQL table statistics rst report generator"
+	echo ""
+	echo "Usage:"
+	echo "  `basename $0` [OPTION]"
+	echo ""
+	echo "Options:"
+	echo "  -i FILE     table list file"
+	echo "  -o PATH     output directory"
+	echo "  -t TITLE    title of the report"
+}
+
+error() {
+	echo "ERROR: $@"
+	exit 1
+}
+
+image_links()
+{
+	for CHART in `(cd $INDIR && ls -v table-stat-$TABLE-*.png) 2> /dev/null`; do
+		echo ".. image:: ../$CHART"
+		echo "   :target: ../$CHART"
+		echo "   :width: 100%"
+		echo ""
+	done
+}
+
+image_links_by_metric()
+{
+	for TABLE in `cat $TABLELISTFILE`; do
+		echo ".. image:: ../table-stat-${TABLE}-${METRIC}.png"
+		echo "   :target: ../table-stat-${TABLE}-${METRIC}.png"
+		echo "   :width: 100%"
+		echo ""
+	done
+}
+
+while getopts "hi:o:t:" opt; do
+	case $opt in
+	i)
+		TABLELISTFILE=$OPTARG
+		;;
+	h)
+		usage
+		exit 1
+		;;
+	o)
+		# Overloading this flag, the charts must also be in this directory.
+		INDIR=$OPTARG
+		;;
+	t)
+		TITLE=$OPTARG
+		;;
+	\?)
+		usage
+		exit 1
+		;;
+	esac
+done
+
+if [ "x$TABLELISTFILE" = "x" ]; then
+	error "table list file was not specified with -i"
+fi
+
+if [ ! -f "$TABLELISTFILE" ]; then
+	error "table list file $TABLELISTFILE not found"
+fi
+
+# Create reports for table statisics.
+
+for TABLE in `cat $TABLELISTFILE`; do
+	OUTDIR="${INDIR}/${TABLE}"
+	mkdir -p $OUTDIR
+	if [ ! -d "$OUTDIR" ]; then
+		error "could not create directory $OUTDIR"
+	fi
+
+	TABLECHARTFILE="${OUTDIR}/index.rst"
+	cat > $TABLECHARTFILE << __EOF__
+================================================================================
+$TITLE $TABLE Table Charts
+================================================================================
+
+$(image_links)
+__EOF__
+done
+
+# Create reports by table metrics.
+
+TABLEMETRICS=`(cd $INDIR && ls *.png) 2> /dev/null | \
+		sed -e "s/table-stat-.*-//" | sed -e "s/.png$//" | sort | uniq`
+
+for METRIC in $TABLEMETRICS; do
+	OUTDIR="${INDIR}/t_${METRIC}"
+	mkdir -p $OUTDIR
+	if [ ! -d "$OUTDIR" ]; then
+		error "could not create directory $OUTDIR"
+	fi
+
+	METRICCHARTFILE="${OUTDIR}/index.rst"
+	cat > $METRICCHARTFILE << __EOF__
+================================================================================
+$TITLE Table $METRIC Charts
+================================================================================
+
+$(image_links_by_metric)
+__EOF__
+done
