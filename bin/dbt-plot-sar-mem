@@ -3,21 +3,53 @@
 # This file is released under the terms of the Artistic License.
 # Please see the file LICENSE, included in this package, for details.
 #
-# Copyright (C) 2015      Mark Wong
-#               2015      2ndQuadrant, Ltd.
+# Copyright (C) 2015      2ndQuadrant, Ltd.
+#               2015-2022 Mark Wong
 #
 
-INPUTFILE=$1
-OUTPUTDIR=$2
+usage()
+{
+	echo "`basename $0` is the DBT sar memory statistics chart generator"
+	echo ""
+	echo "Usage:"
+	echo "  `basename $0` [OPTION]"
+	echo ""
+	echo "Options:"
+	echo "  -i CSV      path to sar-mem.csv file"
+	echo "  -o PATH     output directory"
+}
 
-if [ $# -ne 2 ]; then
-	echo "Create a plot of memory statistics."
-	echo "usage: `basename $0` <sar-mem.csv> <output directory>"
-	echo
-	echo "    <sar-mem.csv> - full path to the sar-cpu.csv file"
-	echo "    <output directory> - location to write output files"
-	echo
-	echo "Will attempt to create <output directory> if it does not exist."
+while getopts "hi:n:o:" opt; do
+	case $opt in
+	h)
+		usage
+		exit 1
+		;;
+	i)
+		INPUTFILE=$OPTARG
+		;;
+	o)
+		OUTDIR=$OPTARG
+		mkdir -p $OUTDIR
+		if [ ! -d "$OUTDIR" ]; then
+			echo "ERROR: Failed to create directory $OUTDIR"
+			exit 1
+		fi
+		;;
+	\?)
+		usage
+		exit 1
+		;;
+	esac
+done
+
+if [ "x$INPUTFILE" = "x" ]; then
+	error "ERROR: input CSV file was not specified with -i"
+	exit 1
+fi
+
+if [ "x$OUTDIR" = "x" ]; then
+	error "ERROR: output directory was not specified with -o"
 	exit 1
 fi
 
@@ -26,12 +58,47 @@ df <- read.csv("$INPUTFILE", sep=";", header=T)
 starttime = df[1,]\$timestamp
 df\$timestamp <- ceiling((df\$timestamp - starttime) / 60)
 
-# Plot all device utilization on a single chart.
+bitmap("${OUTDIR}/sar-mem-kbbuffers.png",
+       type="png16m", units="px", width=1280, height=800, res=150, taa=4,
+       gaa=4)
+plot(df\$timestamp, df\$kbbuffers,
+     xlim=c(0, max(df\$timestamp, na.rm=T)),
+     ylim=c(0, max(df\$kbbuffers, na.rm=T)), type = "b", col = rainbow(1),
+     main="Buffered Kernel Memory",
+     xlab="Elapsed Time (minutes)", ylab="Kilobytes")
 
-bitmap("$OUTPUTDIR/sar-mem-memused.png",
+grid(col="gray")
+invisible(dev.off())
+
+bitmap("${OUTDIR}/sar-mem-kbcached.png",
+       type="png16m", units="px", width=1280, height=800, res=150, taa=4,
+       gaa=4)
+plot(df\$timestamp, df\$kbcached,
+     xlim=c(0, max(df\$timestamp, na.rm=T)),
+     ylim=c(0, max(df\$kbcached, na.rm=T)), type = "b", col = rainbow(1),
+     main="Cached Kernel Memory",
+     xlab="Elapsed Time (minutes)", ylab="Kilobytes")
+
+grid(col="gray")
+invisible(dev.off())
+
+bitmap("${OUTDIR}/sar-mem-kbdirty.png",
+       type="png16m", units="px", width=1280, height=800, res=150, taa=4,
+       gaa=4)
+plot(df\$timestamp, df\$kbdirty,
+     xlim=c(0, max(df\$timestamp, na.rm=T)),
+     ylim=c(0, max(df\$kbdirty, na.rm=T)), type = "b", col = rainbow(1),
+     main="Dirty Memory",
+     xlab="Elapsed Time (minutes)", ylab="Kilobytes")
+
+grid(col="gray")
+invisible(dev.off())
+
+bitmap("${OUTDIR}/sar-mem-memused.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,
        gaa=4)
 plot(df\$timestamp, df\$X.memused,
+     xlim=c(0, max(df\$timestamp, na.rm=T)),
      ylim=c(0, 100), type = "b", col = rainbow(1),
      main="Memory Utilization",
      xlab="Elapsed Time (minutes)", ylab="% Utilization")
