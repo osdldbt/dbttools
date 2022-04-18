@@ -3,6 +3,8 @@ vX.Y.X
 - Update command line flags in some scripts in effort to make usage more
   uniform
 - Create more sar memory charts: kbbuffers, kbcached, and kbdirty
+- Enhance pidstat processing
+- Fix pidstat chart creation
 
 v0.1.0
 

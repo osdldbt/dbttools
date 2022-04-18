@@ -28,16 +28,45 @@ HEADER=`head -n 3 $PIDSTATTXT | tail -n 1`
 # Strip off leading # in the header.
 CSVHEADER=`echo "$HEADER" | tr -s ' ' ',' | cut -d ',' -f 2-`
 echo $CSVHEADER > $PIDSTATCSV
-
 COUNT=`echo $CSVHEADER | tr -cd , | wc -c`
 
+# Count how many spaces there are to see if we have a human readable timestamp
+# instead of ctime in the time column.  This may not be fool proof...
+DATASAMPLE=$(head -n 4 $PIDSTATTXT | tail -n 1)
+COL1=$(echo "$DATASAMPLE" | awk '{print $1}')
+
+if expr "$COL1" : '[0-9][0-9]*$' > /dev/null; then
+	# Time is is a number
+	COMMANDCOL=$COUNT
+	HRTIME=0
+else
+	# Time is in a human readable format, assuming "HH:MM:SS pp", so compensate
+	# for extra space.
+	COMMANDCOL=$(( $COUNT + 1 ))
+	HRTIME=1
+fi
+
 while read line; do
+	# Pull out the "Command" information since it may contain spaces.
 	COMMAND=$line
-	for i in `seq 1 $COUNT`; do
+	for i in $(seq 1 $COMMANDCOL); do
 		COMMAND=`echo $COMMAND | awk '{$1=""; print $0}'`
 	done
-	COMMAND=`echo $COMMAND | awk '$1=$1'`
-	echo "`echo $line | tr -s ' ' ',' | cut -d ',' -f -$COUNT`,$COMMAND" \
-			>> $PIDSTATCSV
+	COMMAND="\"$(echo $COMMAND | awk '$1=$1')\""
+
+	if [ $HRTIME -eq 1 ]; then
+		# Convert the human readable date back into ctime.
+		THISTIME=$(echo "$line" | awk '{print $1, $2}')
+		THISTIME=$(date --date="$THISTIME" +%s)
+		REMAINING=$line
+		for i in $(seq 1 2); do
+			REMAINING=$(echo $REMAINING | awk '{$1=""; print $0}')
+		done
+		echo "$(echo "$THISTIME $REMAINING" | tr -s ' ' ',' | cut -d ',' -f -$COUNT),$COMMAND" \
+				>> $PIDSTATCSV
+	else
+		echo "$(echo $line | tr -s ' ' ',' | cut -d ',' -f -$COUNT),$COMMAND" \
+				>> $PIDSTATCSV
+	fi
 done < <(tail -n+2 $PIDSTATTXT | grep -v -e '^$' | grep -v "$HEADER" \
 		| awk '$1=$1' )
