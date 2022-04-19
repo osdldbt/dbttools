@@ -5,6 +5,7 @@ vX.Y.X
 - Create more sar memory charts: kbbuffers, kbcached, and kbdirty
 - Enhance pidstat processing
 - Fix pidstat chart creation
+- Adopt Artistic License 2.0
 
 v0.1.0
 
