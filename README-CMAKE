@@ -1,1 +1,7 @@
-cpack -D CPACK_INSTALLED_DIRECTORIES="`pwd`;/"
+One example of installing with custom patch prefix::
+
+    cmake --install . --prefix /usr
+
+Create packages::
+
+    cpack -D CPACK_INSTALLED_DIRECTORIES="`pwd`;/"
