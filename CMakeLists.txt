@@ -20,6 +20,7 @@ INSTALL(PROGRAMS
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-net
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-swap
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-distribution
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-rate
         ${CMAKE_SOURCE_DIR}/bin/dbt-process-pidstat
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-db-html
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-db-report
