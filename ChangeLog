@@ -1,4 +1,4 @@
-vX.Y.X
+v0.3.0
 
 - Add generic transaction rate plotting script
 - Update plot-transaction-distribution script to handle multiple data files
