@@ -1,4 +1,4 @@
-vX.Y.X
+v0.3.1
 
 - Fix parameter count check in dbt-plot-transaction-distribution
 
