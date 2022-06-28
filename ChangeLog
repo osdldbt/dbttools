@@ -1,3 +1,7 @@
+vX.Y.X
+
+- Fix parameter count check in dbt-plot-transaction-distribution
+
 v0.3.0
 
 - Add generic transaction rate plotting script

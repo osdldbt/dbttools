@@ -7,7 +7,7 @@
 #               2010-2022 Mark Wong
 #
 
-if [ $# -lt 6 ]; then
+if [ $# -lt 5 ]; then
 	echo "$(basename $0) is the DBT transaction distribution plotter"
 	echo ""
 	echo "Usage:"
