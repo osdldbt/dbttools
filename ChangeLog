@@ -1,4 +1,4 @@
-vX.Y.Z
+v0.3.2
 
 - Fix CMake project() definition
 
