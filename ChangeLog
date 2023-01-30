@@ -1,3 +1,7 @@
+vX.Y.Z
+
+- Fix CMake project() definition
+
 v0.3.1
 
 - Fix parameter count check in dbt-plot-transaction-distribution
