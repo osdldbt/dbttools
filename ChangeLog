@@ -1,6 +1,8 @@
 vX.Y.Z (YYYY-MM-DD)
 
 - Add dates to releases.
+- Add Julia versions of each plotting script
+- Add network plot for device % utilization
 
 v0.3.2 (2023-01-30)
 

@@ -14,7 +14,7 @@ if [ $# -lt 6 ]; then
 	echo ""
 	echo "Options"
 	echo "  txn name            name to use on the chart title"
-	echo "  txn id              identifer used in the log file"
+	echo "  txn id              identifier used in the log file"
 	echo "  rate                tps or tpm"
 	echo "  output directory    path to output charts"
 	echo "  color index         number for selecting plot color"
@@ -50,7 +50,7 @@ else
 	exit 1
 fi
 
-# Covert the list of file names from the comand line into a quoted and comma
+# Covert the list of file names from the command line into a quoted and comma
 # separated list for R.
 FILENAMES=""
 for FILENAME in $@; do
@@ -64,7 +64,7 @@ df <- do.call(rbind, lapply(filenames, read.csv, header=FALSE))
 colnames(df)[1] <- 'ctime'
 colnames(df)[2] <- 'txn'
 # This is really the transaction "status" column, but we're going to count the
-# number of occurances here.
+# number of occurrences here.
 colnames(df)[3] <- 'count'
 
 color <- rainbow(length(unique(df\$txn[df\$txn != "START" &

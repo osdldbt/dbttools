@@ -37,13 +37,13 @@ color <- rainbow(2)
 pch <- c(1, 2)
 for (dev in devices) {
   df.all <- subset(df, df\$IFACE == dev)
-  bitmap(paste("${OUTPUTDIR}/sar-net-", dev, ".png", sep = ""),
+  bitmap(paste("${OUTPUTDIR}/sar-net-", dev, "-x.png", sep = ""),
          type="png16m", units="px", width=1280, height=800, res=150, taa=4,
          gaa=4)
   plot(df.all\$timestamp, df.all\$rxpck.s,
        ylim=c(0, max(max(df.all\$rxpck.s), max(df.all\$txpck.s))),
        type = "b", col = color[1],
-       main=paste("Network Device ", dev, " Receive/Trasmit", sep = ""),
+       main=paste("Network Device ", dev, " Receive/Transmit", sep = ""),
        xlab="Elapsed Time (minutes)", ylab="KiloBytes/s")
   points(df.all\$timestamp, df.all\$txpck.s, type = "b", pch = pch[2],
          col=color[2])
@@ -51,7 +51,31 @@ for (dev in devices) {
   legend('topright', label, pch=pch, col=color)
 
   grid(col="gray")
-dev.off()
-
+  invisible(dev.off())
 }
+
+# Plot network device utilization.
+
+count <- length(devices)
+color <- rainbow(count)
+pch <- seq.int(1, count)
+
+df.all <- subset(df, df\$IFACE == devices[1])
+bitmap(paste("${OUTPUTDIR}/sar-net-util.png", sep = ""),
+       type="png16m", units="px", width=1280, height=800, res=150, taa=4,
+       gaa=4)
+plot(df.all\$timestamp, df.all\$X.ifutil,
+     ylim=c(1, 100),
+     type = "b", col = color[1],
+     main=paste("Network Device % Utilization", sep = ""),
+     xlab="Elapsed Time (minutes)", ylab="% Utilization")
+for (i in 2:count) {
+  df.all <- subset(df, df\$IFACE == devices[i])
+  points(df.all\$timestamp, df.all\$X.ifutil, type = "b", pch = pch[i],
+         col=color[i])
+}
+legend('topright', devices, pch=pch, col=color)
+
+grid(col="gray")
+invisible(dev.off())
 __EOF__

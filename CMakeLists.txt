@@ -13,14 +13,23 @@ SET(PROJECT_VERSION
 #
 
 INSTALL(PROGRAMS 
-        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-pidstat
-        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-blockdev
-        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-cpu
-        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-mem
-        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-net
-        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-swap
-        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-distribution
-        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-rate
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-pidstat.jl
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-pidstat.r
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-blockdev.jl
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-blockdev.r
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-cpu.jl
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-cpu.r
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-mem.jl
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-mem.r
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-net.jl
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-net.r
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-swap.jl
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-sar-swap.r
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-distribution.jl
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-distribution.r
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-rate.jl
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-rate.r
         ${CMAKE_SOURCE_DIR}/bin/dbt-process-pidstat
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-db-html
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-db-report
@@ -28,9 +37,12 @@ INSTALL(PROGRAMS
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-index-report
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-table-html
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-table-report
-        ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-plot-database-stats
-        ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-plot-index-stats
-        ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-plot-table-stats
+        ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-plot-pgsql-database-stats.jl
+        ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-plot-pgsql-database-stats.r
+        ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-plot-pgsql-index-stats.jl
+        ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-plot-pgsql-index-stats.r
+        ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-plot-pgsql-table-stats.jl
+        ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-plot-pgsql-table-stats.r
         DESTINATION "bin")
 
 SET(CPACK_CMAKE_GENERATOR "Unix Makefiles")

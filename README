@@ -1,11 +1,4 @@
 The purpose of this package is to provide tools that are shared between
 all kits in the database test projects.
 
-These scripts currently depend on R.
-
-R
-_
-
-These were developed using R v2.9.2.  Older versions of R, such as
-v2.6.2 do not support some of the taa and gaa parameters.  Although I
-did not check when they were introduced.
+These project can use R or Julia to generate charts.
