@@ -1,0 +1,73 @@
+#!/bin/sh
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright (C) 2023 Mark Wong
+#
+
+if [ $# -lt 1 ]; then
+    echo "$(basename "$0") is the DBT plot runner"
+    echo ""
+    echo "Usage:"
+    echo "  $(basename "$0") TYPE [OPTION]"
+    echo
+	exit 1
+fi
+
+if [ "$DBTLANG" = "" ]; then
+	# Ordered preference of which language usually runs faster.
+	if which "R" > /dev/null 2>&1; then
+		DBTLANG="R"
+	elif which "julia" > /dev/null 2>&1; then
+		DBTLANG="julia"
+	else
+		echo "ERROR: 'julia' nor 'R' detected for post processing"
+		exit 1
+	fi
+else
+	if ! which "$DBTLANG" > /dev/null 2>&1; then
+		echo "ERROR: $DBTLANG not detected, set to 'R' or 'julia', or unset "
+		echo "to let the script autodetect"
+		exit 1
+	fi
+fi
+
+if [ "$DBTLANG" = "julia" ]; then
+	PPEXT="jl"
+elif [ "$DBTLANG" = "R" ]; then
+	PPEXT="r"
+fi
+
+MODULE="$1"
+shift
+
+PSCRIPT="dbt-plot-${MODULE}.${PPEXT}"
+
+if ! which "$PSCRIPT" > /dev/null 2>&1; then
+		echo "ERROR: $PSCRIPT not found in PATH"
+		exit 1
+fi
+
+if [ "$DBTLANG" = "julia" ]; then
+	# Set up the depot in temp to not interfere with whatever packages that
+	# already exist.
+	DBT2_JULIA_DEPOT_PATH="/tmp/.dbt2-julia"
+	if [ "$JULIA_DEPOT_PATH" = "" ]; then
+		export JULIA_DEPOT_PATH="${DBT2_JULIA_DEPOT_PATH}"
+	else
+		export JULIA_DEPOT_PATH="${DBT2_JULIA_DEPOT_PATH}:${JULIA_DEPOT_PATH}"
+	fi
+
+	# Make sure package dependencies are installed.
+
+	PACKAGES="CSV DataFrames VegaLite"
+	for PACKAGE in $PACKAGES; do
+		COUNT=$(julia -q -e "import Pkg; Pkg.status(\"${PACKAGE}\")" | wc -l)
+		if [ "$COUNT" -ne 2 ]; then
+			julia -q -e "import Pkg; Pkg.add(\"${PACKAGE}\")" > /dev/null 2>&1
+		fi
+	done
+fi
+
+"$PSCRIPT" "$@"

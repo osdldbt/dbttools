@@ -131,7 +131,7 @@ bitmap("${OUTDIR}/table-stat-${TABLENAME}-seq_scan.png",
        gaa=4)
 plot(df\$ctime, df\$seq_scan, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$seq_scan, na.rm = T)), type = "b", col = rainbow(1),
-     main="Seqeuntial Scans (${TABLENAME})",
+     main="Sequential Scans (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Sequential Scans")
 grid(col="gray")
 invisible(dev.off())
@@ -211,7 +211,7 @@ bitmap("${OUTDIR}/table-stat-${TABLENAME}-n_live_tup.png",
        gaa=4)
 plot(df\$ctime, df\$n_live_tup, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$n_live_tup, na.rm = T)), type = "b", col = rainbow(1),
-     main="HOT Updates (${TABLENAME})",
+     main="Live Rows (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Tuples")
 grid(col="gray")
 invisible(dev.off())
@@ -221,7 +221,7 @@ bitmap("${OUTDIR}/table-stat-${TABLENAME}-n_dead_tup.png",
        gaa=4)
 plot(df\$ctime, df\$n_dead_tup, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$n_dead_tup, na.rm = T)), type = "b", col = rainbow(1),
-     main="Dead Tuples (${TABLENAME})",
+     main="Estimated Number of Dead Rows (${TABLENAME})",
      xlab="Elapsed Time (minutes)", ylab="Tuples")
 grid(col="gray")
 invisible(dev.off())
