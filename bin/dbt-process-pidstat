@@ -7,32 +7,32 @@
 # Copyright (C) 2015      2ndQuadrant, Ltd.
 #
 
-# FIXME: Surely there is a better way to process pidstat data, too bad it doesn't
-#        have a csv output option...
+# FIXME: Surely there is a better way to process pidstat data, too bad it
+#        doesn't have a CSV output option...
 
 if [ $# -ne 1 ]; then
-	echo "usage: `basename $0` <pidstat.txt>"
+	echo "usage: $(basename "$0") <pidstat.txt>"
 	exit 1
 fi
 
 PIDSTATTXT=$1
-OUTDIR=`dirname $PIDSTATTXT`
+OUTDIR=$(dirname "$PIDSTATTXT")
 PIDSTATCSV="$OUTDIR/pidstat.csv"
 
-HEADER=`head -n 3 $PIDSTATTXT | tail -n 1`
+HEADER=$(head -n 3 "$PIDSTATTXT" | tail -n 1)
 
-# Skip the first line, containing OS information, then strip all empty lines and
-# headers, strip leading and trailing whitespaces, then squeeze spaces into 
-# commas.  Prepend the header once at the top of the csv file.
+# Skip the first line, containing OS information, then strip all empty lines
+# and headers, strip leading and trailing white spaces, then squeeze spaces
+# into commas.  Prepend the header once at the top of the CSV file.
 
 # Strip off leading # in the header.
-CSVHEADER=`echo "$HEADER" | tr -s ' ' ',' | cut -d ',' -f 2-`
-echo $CSVHEADER > $PIDSTATCSV
-COUNT=`echo $CSVHEADER | tr -cd , | wc -c`
+CSVHEADER=$(echo "$HEADER" | tr -s ' ' ',' | cut -d ',' -f 2-)
+echo "$CSVHEADER" > "$PIDSTATCSV"
+COUNT=$(echo "$CSVHEADER" | tr -cd , | wc -c)
 
-# Count how many spaces there are to see if we have a human readable timestamp
+# Count how many spaces there are to see if we have a human readable time stamp
 # instead of ctime in the time column.  This may not be fool proof...
-DATASAMPLE=$(head -n 4 $PIDSTATTXT | tail -n 1)
+DATASAMPLE=$(head -n 4 "$PIDSTATTXT" | tail -n 1)
 COL1=$(echo "$DATASAMPLE" | awk '{print $1}')
 
 if expr "$COL1" : '[0-9][0-9]*$' > /dev/null; then
@@ -42,31 +42,32 @@ if expr "$COL1" : '[0-9][0-9]*$' > /dev/null; then
 else
 	# Time is in a human readable format, assuming "HH:MM:SS pp", so compensate
 	# for extra space.
-	COMMANDCOL=$(( $COUNT + 1 ))
+	COMMANDCOL=$(( COUNT + 1 ))
 	HRTIME=1
 fi
 
-while read line; do
+while read -r line; do
 	# Pull out the "Command" information since it may contain spaces.
 	COMMAND=$line
-	for i in $(seq 1 $COMMANDCOL); do
-		COMMAND=`echo $COMMAND | awk '{$1=""; print $0}'`
+	for _ in $(seq 1 "$COMMANDCOL"); do
+		COMMAND=$(echo "$COMMAND" | awk '{$1=""; print $0}')
 	done
-	COMMAND="\"$(echo $COMMAND | awk '$1=$1')\""
+	COMMAND="\"$(echo "$COMMAND" | awk '$1=$1')\""
 
 	if [ $HRTIME -eq 1 ]; then
 		# Convert the human readable date back into ctime.
 		THISTIME=$(echo "$line" | awk '{print $1, $2}')
 		THISTIME=$(date --date="$THISTIME" +%s)
 		REMAINING=$line
-		for i in $(seq 1 2); do
-			REMAINING=$(echo $REMAINING | awk '{$1=""; print $0}')
+		for _ in $(seq 1 2); do
+			REMAINING=$(echo "$REMAINING" | awk '{$1=""; print $0}')
 		done
-		echo "$(echo "$THISTIME $REMAINING" | tr -s ' ' ',' | cut -d ',' -f -$COUNT),$COMMAND" \
-				>> $PIDSTATCSV
+		PART1="$THISTIME $REMAINING"
+		PART2=$(echo "$PART1" | tr -s ' ' ',' | cut -d ',' -f -"$COUNT")
+		echo "${PART2},${COMMAND}" >> "$PIDSTATCSV"
 	else
-		echo "$(echo $line | tr -s ' ' ',' | cut -d ',' -f -$COUNT),$COMMAND" \
-				>> $PIDSTATCSV
+		PART1=$(echo "$line" | tr -s ' ' ',' | cut -d ',' -f -"$COUNT")
+		echo "${PART1},$COMMAND" >> "$PIDSTATCSV"
 	fi
-done < <(tail -n+2 $PIDSTATTXT | grep -v -e '^$' | grep -v "$HEADER" \
+done < <(tail -n+2 "$PIDSTATTXT" | grep -v -e '^$' | grep -v "$HEADER" \
 		| awk '$1=$1' )

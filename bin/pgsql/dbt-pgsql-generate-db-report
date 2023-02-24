@@ -8,10 +8,10 @@
 
 usage()
 {
-	echo "`basename $0` is the PostgreSQL database statistics rst report generator"
+	echo "$(basename "$0") is the PostgreSQL database statistics rst report generator"
 	echo ""
 	echo "Usage:"
-	echo "  `basename $0` [OPTION]"
+	echo "  $(basename "$0") [OPTION]"
 	echo ""
 	echo "Options:"
 	echo "  -i PATH     path to input files"
@@ -20,16 +20,13 @@ usage()
 
 image_links()
 {
-	FILES=`ls -v ${INDIR}/*.png 2> /dev/null`
-	if [ -n "$FILES" ]; then
-		for CHART in $FILES; do
-			CHART="$URL`basename $CHART`"
-			echo ".. image:: $CHART"
-			echo "   :target: $CHART"
-			echo "   :width: 100%"
-			echo ""
-		done
-	fi
+	find "${INDIR}" -name '*.png' | while IFS= read -r CHART; do
+		CHART="$URL$(basename "$CHART")"
+		echo ".. image:: $CHART"
+		echo "   :target: $CHART"
+		echo "   :width: 100%"
+		echo ""
+	done
 }
 
 while getopts "hi:t:" opt; do
@@ -51,12 +48,12 @@ while getopts "hi:t:" opt; do
 	esac
 done
 
-if [ "x$INDIR" = "x" ]; then
+if [ "$INDIR" = "" ]; then
 	error "Error: input was not specified with -i"
 	exit 1
 fi
 
-cat << __EOF__ > ${INDIR}/index.rst
+cat << __EOF__ > "${INDIR}/index.rst"
 ================================================================================
 $TITLE Database Charts
 ================================================================================

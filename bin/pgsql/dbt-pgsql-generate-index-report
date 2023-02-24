@@ -8,10 +8,10 @@
 
 usage()
 {
-	echo "`basename $0` is the PostgreSQL index statistics rst report generator"
+	echo "$(basename "$0") is the PostgreSQL index statistics rst report generator"
 	echo ""
 	echo "Usage:"
-	echo "  `basename $0` [OPTION]"
+	echo "  $(basename "$0") [OPTION]"
 	echo ""
 	echo "Options:"
 	echo "  -i FILE     table list file"
@@ -21,7 +21,9 @@ usage()
 
 image_links()
 {
-	for CHART in `(cd $INDIR && ls -v index-stat-$INDEX-*.png) 2> /dev/null`; do
+	find "${INDIR}" -name "index-stat-$INDEX-*.png" | while IFS= read -r CHART
+	do
+		CHART=$(basename "$CHART")
 		echo ".. image:: ../$CHART"
 		echo "   :target: ../$CHART"
 		echo "   :width: 100%"
@@ -31,16 +33,16 @@ image_links()
 
 image_links_by_metric()
 {
-	for INDEX in `cat $INDEXLISTFILE`; do
+	while IFS= read -r INDEX; do
 		echo ".. image:: ../index-stat-${INDEX}-${METRIC}.png"
 		echo "   :target: ../index-stat-${INDEX}-${METRIC}.png"
 		echo "   :width: 100%"
 		echo ""
-	done
+	done < "$INDEXLISTFILE"
 }
 
 error() {
-	echo "ERROR: $@"
+	echo "ERROR: $*"
 	exit 1
 }
 
@@ -67,7 +69,7 @@ while getopts "hi:o:t:" opt; do
 	esac
 done
 
-if [ "x$INDEXLISTFILE" = "x" ]; then
+if [ "$INDEXLISTFILE" = "" ]; then
 	error "index list file was not specified with -i"
 fi
 
@@ -77,37 +79,36 @@ fi
 
 # Create report listing stats for an index.
 
-for INDEX in `cat $INDEXLISTFILE`; do
+while IFS= read -r INDEX; do
 	OUTDIR="${INDIR}/${INDEX}"
-	mkdir -p $OUTDIR
+	mkdir -p "$OUTDIR"
 	if [ ! -d "$OUTDIR" ]; then
 		error "could not create directory $OUTDIR"
 	fi
 
 	INDEXCHARTFILE="${OUTDIR}/index.rst"
-	cat > $INDEXCHARTFILE << __EOF__
+	cat > "$INDEXCHARTFILE" << __EOF__
 ================================================================================
 $TITLE $INDEX Index Charts
 ================================================================================
 
 $(image_links)
 __EOF__
-done
+done < "$INDEXLISTFILE"
 
 # Create report showing all indexes for a metric.
 
-INDEXMETRICS=`(cd $INDIR && ls *.png) 2> /dev/null | \
-		sed -e "s/index-stat-.*-//" | sed -e "s/.png$//" | sort | uniq`
+INDEXMETRICS=$( (cd "$INDIR" && ls ./*.png) 2> /dev/null | sed -e "s/^.*index-stat-.*-//" | sed -e "s/.png$//" | sort | uniq | grep -v "^tup$")
 
 for METRIC in $INDEXMETRICS; do
 	OUTDIR="${INDIR}/i_${METRIC}"
-	mkdir -p $OUTDIR
+	mkdir -p "$OUTDIR"
 	if [ ! -d "$OUTDIR" ]; then
 		error "ERROR: could not create directory $OUTDIR"
 	fi
 
 	METRICCHARTFILE="${OUTDIR}/index.rst"
-	cat > $METRICCHARTFILE << __EOF__
+	cat > "$METRICCHARTFILE" << __EOF__
 ================================================================================
 $TITLE Index $METRIC Charts
 ================================================================================
