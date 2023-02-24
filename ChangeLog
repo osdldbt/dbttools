@@ -4,6 +4,7 @@ vX.Y.Z (YYYY-MM-DD)
 - Add Julia versions of each plotting script
 - Add network plot for device % utilization
 - Remove original HTML generating report scripts
+- More shellcheck linting
 
 v0.3.2 (2023-01-30)
 
