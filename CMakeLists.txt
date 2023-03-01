@@ -12,7 +12,13 @@ SET(PROJECT_VERSION
 # Install rules.
 #
 
+configure_file(
+    bin/dbt-version.in
+    ${CMAKE_BINARY_DIR}/dbt-version
+)
+
 INSTALL(PROGRAMS 
+        ${CMAKE_BINARY_DIR}/dbt-version
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot-pidstat.jl
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot-pidstat.r

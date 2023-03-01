@@ -1,0 +1,61 @@
+#!/bin/sh
+#
+# This file is released under the terms of the Artistic License.
+# Please see the file LICENSE, included in this package, for details.
+#
+# Copyright The DBT Tools Authors
+#
+
+# Display the version of the kit and any other tools that may be used.
+
+usage()
+{
+	echo "$(basename "$0") is the DBT Tools version reporter"
+	echo ""
+	echo "Usage:"
+	echo "  $(basename "$0") [OPTIONS]"
+	echo
+	echo "Options:"
+	echo "  -v    display version of other potentially used software that"
+	echo "        DBT Tools may use"
+}
+
+display_version()
+{
+	NAME=$1
+	FLAG=$2
+	if ! which "${NAME}" > /dev/null 2>&1; then
+		echo "$NAME not found"
+		return
+	fi
+	CMD="$(which "${NAME}") ${FLAG}"
+	echo ""
+	echo "${CMD}"
+	eval "${CMD}"
+}
+
+VERBOSE=0
+while getopts "hv" OPT; do
+	case $OPT in
+	h)
+		usage
+		exit 0
+		;;
+	v)
+		VERBOSE=1
+		;;
+	*)
+		usage
+		exit 1
+		;;
+	esac
+done
+
+echo "dbttools (Database Test Tools) v@PROJECT_VERSION@"
+
+if [ $VERBOSE -eq 0 ]; then
+	exit 0
+fi
+
+display_version julia --version
+display_version R --version

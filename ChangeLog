@@ -1,3 +1,8 @@
+vX.Y.Z (YYYY-MM-DD)
+
+- Add "version" script to show kit version and versions of software that may be
+  used
+
 v0.4.0 (2023-02-24)
 
 - Add dates to releases.
