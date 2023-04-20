@@ -15,17 +15,16 @@ usage()
 	echo ""
 	echo "Options:"
 	echo "  -i FILE     table list file"
-	echo "  -o PATH     output directory"
 	echo "  -t TITLE    title of the report"
 }
 
 image_links()
 {
-	find "${INDIR}" -name "index-stat-$INDEX-*.png" | while IFS= read -r CHART
+	find "${INDIR}" -name "pgsql-${INDEX}-*.png" | while IFS= read -r CHART
 	do
 		CHART=$(basename "$CHART")
-		echo ".. image:: ../$CHART"
-		echo "   :target: ../$CHART"
+		echo ".. image:: ../${CHART}"
+		echo "   :target: ../${CHART}"
 		echo "   :width: 100%"
 		echo ""
 	done
@@ -33,12 +32,12 @@ image_links()
 
 image_links_by_metric()
 {
-	while IFS= read -r INDEX; do
-		echo ".. image:: ../index-stat-${INDEX}-${METRIC}.png"
-		echo "   :target: ../index-stat-${INDEX}-${METRIC}.png"
+	grep ^public "$INDEXLISTFILE" | while IFS= read -r INDEX; do
+		echo ".. image:: ../../index/pgsql-${INDEX}-${METRIC}.png"
+		echo "   :target: ../../index/pgsql-${INDEX}-${METRIC}.png"
 		echo "   :width: 100%"
 		echo ""
-	done < "$INDEXLISTFILE"
+	done
 }
 
 error() {
@@ -46,18 +45,15 @@ error() {
 	exit 1
 }
 
-while getopts "hi:o:t:" opt; do
+while getopts "hi:t:" opt; do
 	case $opt in
 	i)
 		INDEXLISTFILE=$OPTARG
+		INDIR="$(dirname "${INDEXLISTFILE}")"
 		;;
 	h)
 		usage
 		exit 1
-		;;
-	o)
-		# Overloading this flag, the charts must also be in this directory.
-		INDIR=$OPTARG
 		;;
 	t)
 		TITLE=$OPTARG
@@ -79,8 +75,9 @@ fi
 
 # Create report listing stats for an index.
 
-while IFS= read -r INDEX; do
-	OUTDIR="${INDIR}/${INDEX}"
+grep ^public "$INDEXLISTFILE" | grep -v "\.pg_catalog\." | \
+		while IFS= read -r INDEX; do
+	OUTDIR="${INDIR}/index/${INDEX}"
 	mkdir -p "$OUTDIR"
 	if [ ! -d "$OUTDIR" ]; then
 		error "could not create directory $OUTDIR"
@@ -94,14 +91,15 @@ $TITLE $INDEX Index Charts
 
 $(image_links)
 __EOF__
-done < "$INDEXLISTFILE"
+done
 
 # Create report showing all indexes for a metric.
 
-INDEXMETRICS=$( (cd "$INDIR" && ls ./*.png) 2> /dev/null | sed -e "s/^.*index-stat-.*-//" | sed -e "s/.png$//" | sort | uniq | grep -v "^tup$")
+INDEXMETRICS=$( (cd "$INDIR/index" && ls ./*.png) 2> /dev/null | \
+		sed -e "s/^.\/pgsql-*.*.*-//" | sed -e "s/.png$//" | sort | uniq)
 
 for METRIC in $INDEXMETRICS; do
-	OUTDIR="${INDIR}/i_${METRIC}"
+	OUTDIR="${INDIR}/index-stat/i_${METRIC}"
 	mkdir -p "$OUTDIR"
 	if [ ! -d "$OUTDIR" ]; then
 		error "ERROR: could not create directory $OUTDIR"

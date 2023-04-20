@@ -15,7 +15,6 @@ usage()
 	echo ""
 	echo "Options:"
 	echo "  -i FILE     table list file"
-	echo "  -o PATH     output directory"
 	echo "  -t TITLE    title of the report"
 }
 
@@ -26,11 +25,11 @@ error() {
 
 image_links()
 {
-	find "${INDIR}" -name "table-stat-$TABLE-*.png" | while IFS= read -r CHART
+	find "${INDIR}" -name "pgsql-${TABLE}-*.png" | while IFS= read -r CHART
 	do
 		CHART=$(basename "$CHART")
-		echo ".. image:: ../$CHART"
-		echo "   :target: ../$CHART"
+		echo ".. image:: ../${CHART}"
+		echo "   :target: ../${CHART}"
 		echo "   :width: 100%"
 		echo ""
 	done
@@ -38,26 +37,23 @@ image_links()
 
 image_links_by_metric()
 {
-	while IFS= read -r TABLE; do
-		echo ".. image:: ../table-stat-${TABLE}-${METRIC}.png"
-		echo "   :target: ../table-stat-${TABLE}-${METRIC}.png"
+	grep ^public "$TABLELISTFILE" | while IFS= read -r TABLE; do
+		echo ".. image:: ../../table/pgsql-${TABLE}-${METRIC}.png"
+		echo "   :target: ../../table/pgsql-${TABLE}-${METRIC}.png"
 		echo "   :width: 100%"
 		echo ""
-	done < "$TABLELISTFILE"
+	done
 }
 
-while getopts "hi:o:t:" opt; do
+while getopts "hi:t:" opt; do
 	case $opt in
 	i)
 		TABLELISTFILE=$OPTARG
+		INDIR="$(dirname "${TABLELISTFILE}")"
 		;;
 	h)
 		usage
 		exit 1
-		;;
-	o)
-		# Overloading this flag, the charts must also be in this directory.
-		INDIR=$OPTARG
 		;;
 	t)
 		TITLE=$OPTARG
@@ -77,10 +73,10 @@ if [ ! -f "$TABLELISTFILE" ]; then
 	error "table list file $TABLELISTFILE not found"
 fi
 
-# Create reports for table statisics.
+# Create reports for table statistics.
 
-while IFS= read -r TABLE; do
-	OUTDIR="${INDIR}/${TABLE}"
+grep ^public "$TABLELISTFILE" | while IFS= read -r TABLE; do
+	OUTDIR="${INDIR}/table/${TABLE}"
 	mkdir -p "$OUTDIR"
 	if [ ! -d "$OUTDIR" ]; then
 		error "could not create directory $OUTDIR"
@@ -94,14 +90,15 @@ $TITLE $TABLE Table Charts
 
 $(image_links)
 __EOF__
-done < "$TABLELISTFILE"
+done
 
 # Create reports by table metrics.
 
-TABLEMETRICS=$( (cd "$INDIR" && ls ./*.png) 2> /dev/null | sed -e "s/^.*table-stat-.*-//" | sed -e "s/.png$//" | sort | uniq | grep -v "^tup$")
+TABLEMETRICS=$( (cd "${INDIR}/table" && ls ./*.png) 2> /dev/null | \
+		sed -e "s/^.\/pgsql-*.*-//" | sed -e "s/.png$//" | sort | uniq)
 
 for METRIC in $TABLEMETRICS; do
-	OUTDIR="${INDIR}/t_${METRIC}"
+	OUTDIR="${INDIR}/table-stat/t_${METRIC}"
 	mkdir -p "$OUTDIR"
 	if [ ! -d "$OUTDIR" ]; then
 		error "could not create directory $OUTDIR"

@@ -14,23 +14,27 @@ usage()
 	echo "  $(basename "$0") [OPTION]"
 	echo ""
 	echo "Options:"
+	echo "  -d DBNAME   dbname to generate report about"
 	echo "  -i PATH     path to input files"
 	echo "  -t TITLE    title of the report"
 }
 
 image_links()
 {
-	find "${INDIR}" -name '*.png' | while IFS= read -r CHART; do
-		CHART="$URL$(basename "$CHART")"
-		echo ".. image:: $CHART"
-		echo "   :target: $CHART"
+	find "${INDIR}/db" -name '*.png' | while IFS= read -r CHART; do
+		CHART="$(basename "$CHART")"
+		echo ".. image:: ../${CHART}"
+		echo "   :target: ../${CHART}"
 		echo "   :width: 100%"
 		echo ""
 	done
 }
 
-while getopts "hi:t:" opt; do
+while getopts "d:hi:t:" opt; do
 	case $opt in
+	d)
+		DBNAME=$OPTARG
+		;;
 	i)
 		INDIR=$OPTARG
 		;;
@@ -53,7 +57,9 @@ if [ "$INDIR" = "" ]; then
 	exit 1
 fi
 
-cat << __EOF__ > "${INDIR}/index.rst"
+mkdir -p "${INDIR}/db/${DBNAME}"
+
+cat << __EOF__ > "${INDIR}/db/${DBNAME}/index.rst"
 ================================================================================
 $TITLE Database Charts
 ================================================================================

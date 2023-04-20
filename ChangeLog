@@ -1,3 +1,10 @@
+vX.Y.Z (YYYY-MM-DD)
+
+- Update reports to use touchstone-tools for system and process stat charts
+- Remove option to set output directories and instead base the output directory
+  on where the input files are
+- Require the database name to be set when generating the postgresql report
+
 v0.4.1 (2023-03-01)
 
 - Add "version" script to show kit version and versions of software that may be
