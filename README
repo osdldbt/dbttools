@@ -1,4 +1,4 @@
 The purpose of this package is to provide tools that are shared between
 all kits in the database test projects.
 
-These project can use R or Julia to generate charts.
+These project can use gnuplot, R or Julia to generate charts.

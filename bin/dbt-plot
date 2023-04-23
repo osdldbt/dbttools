@@ -17,23 +17,27 @@ fi
 
 if [ "$DBTLANG" = "" ]; then
 	# Ordered preference of which language usually runs faster.
-	if which "R" > /dev/null 2>&1; then
+	if which "gnuplot" > /dev/null 2>&1; then
+		DBTLANG="gnuplot"
+	elif which "R" > /dev/null 2>&1; then
 		DBTLANG="R"
 	elif which "julia" > /dev/null 2>&1; then
 		DBTLANG="julia"
 	else
-		echo "ERROR: 'julia' nor 'R' detected for post processing"
+		echo "ERROR: 'gnuplot', 'julia' nor 'R' detected for post processing"
 		exit 1
 	fi
 else
 	if ! which "$DBTLANG" > /dev/null 2>&1; then
-		echo "ERROR: $DBTLANG not detected, set to 'R' or 'julia', or unset "
-		echo "to let the script autodetect"
+		echo "ERROR: $DBTLANG not detected, set to 'gnuplot', 'R' or 'julia', "
+		echo "or unset to let the script autodetect"
 		exit 1
 	fi
 fi
 
-if [ "$DBTLANG" = "julia" ]; then
+if [ "$DBTLANG" = "gnuplot" ]; then
+	PPEXT="gnuplot"
+elif [ "$DBTLANG" = "julia" ]; then
 	PPEXT="jl"
 elif [ "$DBTLANG" = "R" ]; then
 	PPEXT="r"

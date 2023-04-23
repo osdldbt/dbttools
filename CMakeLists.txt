@@ -20,8 +20,10 @@ configure_file(
 INSTALL(PROGRAMS 
         ${CMAKE_BINARY_DIR}/dbt-version
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-distribution.gnuplot
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-distribution.jl
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-distribution.r
+        ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-rate.gnuplot
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-rate.jl
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-rate.r
         ${CMAKE_SOURCE_DIR}/bin/pgsql/dbt-pgsql-generate-db-report

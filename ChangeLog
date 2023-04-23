@@ -6,6 +6,7 @@ vX.Y.Z (YYYY-MM-DD)
 - Require the database name to be set when generating the postgresql report
 - Remove R and Julia sar and pidstat plotting scripts in favor of
   touchstone-tools gnuplot versions
+- Add gnuplot versions of transaction plotting scripts
 
 v0.4.1 (2023-03-01)
 
