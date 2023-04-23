@@ -1,4 +1,4 @@
-vX.Y.Z (YYYY-MM-DD)
+v0.5.0 (2023-04-23)
 
 - Update reports to use touchstone-tools for system and process stat charts
 - Remove option to set output directories and instead base the output directory
