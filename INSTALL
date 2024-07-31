@@ -1,6 +1,6 @@
 Installing dbttools:
 
-	cmake -H. -DCMAKE_INSTALL_PREFIX=/path
+    cmake -H. -DCMAKE_INSTALL_PREFIX=/path
     make install
 
 This will put all binaries in '/path'.
