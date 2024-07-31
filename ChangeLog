@@ -1,3 +1,8 @@
+vX.Y.Z (YYYY-MM-DD)
+
+- Average transaction per second rate charts over a minute to be more readable
+  over longer time spans
+
 v0.5.0 (2023-04-23)
 
 - Update reports to use touchstone-tools for system and process stat charts

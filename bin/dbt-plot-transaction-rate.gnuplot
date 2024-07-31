@@ -97,11 +97,12 @@ if [ "${RATE}" = "tpm" ]; then
 	EOF
 elif [ "${RATE}" = "tps" ]; then
 	sqlite3 "${DBFILE}" <<- EOF > "${DATAFILE}"
-		SELECT time, count(time)
+        SELECT (cast(time AS INTEGER) / 60) * 60
+		     , cast(count(time) AS REAL) / 60.0
 		FROM mix
 		WHERE txn = '${TXN_TAG}'
-		GROUP BY time
-		ORDER BY time;
+		GROUP BY 1
+		ORDER BY 1;
 	EOF
 else
 	echo "ERROR: unknown rate ${RATE}"
