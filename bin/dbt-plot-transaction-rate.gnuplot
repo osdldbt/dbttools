@@ -91,14 +91,16 @@ if [ "${RATE}" = "tpm" ]; then
 	sqlite3 "${DBFILE}" <<- EOF > "${DATAFILE}"
 		SELECT (time / 60) * 60, count(time)
 		FROM mix
-		WHERE txn = '${TXN_TAG}' GROUP BY 1
+		WHERE txn = '${TXN_TAG}'
+        GROUP BY 1
 		ORDER BY 1;
 	EOF
 elif [ "${RATE}" = "tps" ]; then
 	sqlite3 "${DBFILE}" <<- EOF > "${DATAFILE}"
 		SELECT time, count(time)
 		FROM mix
-		WHERE txn = '${TXN_TAG}' GROUP BY time
+		WHERE txn = '${TXN_TAG}'
+		GROUP BY time
 		ORDER BY time;
 	EOF
 else
