@@ -7,10 +7,10 @@
 #
 
 if [ $# -lt 6 ]; then
-	echo "$(basename $0) is the DBT transaction rate plotter"
+	echo "$(basename "$0") is the DBT transaction rate plotter"
 	echo ""
 	echo "Usage:"
-	echo "  $(basename $0) <txn name> <txn id> <rate> <output directory> <color index> <log0> [log1 [...]]"
+	echo "  $(basename "$0") <txn name> <txn id> <rate> <output directory> <color index> <log0> [log1 [...]]"
 	echo ""
 	echo "Options"
 	echo "  txn name            name to use on the chart title"
@@ -33,16 +33,16 @@ shift
 COLOR=$1
 shift
 
-mkdir -p $OUTPUTDIR
+mkdir -p "${OUTPUTDIR}"
 if [ ! -d "${OUTPUTDIR}" ]; then
 	echo "ERROR: Failed to create directory ${OUTPUTDIR}"
 	exit 1
 fi
 
-if [ "x${RATE}" = "xtpm" ]; then
+if [ "${RATE}" = "tpm" ]; then
 	YLABEL="Minute"
 	TIMEFACTOR=1
-elif [ "x${RATE}" = "xtps" ]; then
+elif [ "${RATE}" = "tps" ]; then
 	YLABEL="Second"
 	TIMEFACTOR=60
 else
@@ -50,13 +50,13 @@ else
 	exit 1
 fi
 
-# Covert the list of file names from the command line into a quoted and comma
-# separated list for R.
+# Convert the list of file names from the command line into a quoted and
+# comma separated list for R.
 FILENAMES=""
-for FILENAME in $@; do
-	FILENAMES="$FILENAMES \"$FILENAME\""
+for FILENAME in "$@"; do
+	FILENAMES="${FILENAMES},\"${FILENAME}\""
 done
-FILENAMES=$(echo $FILENAMES | sed -e "s/ /,/g")
+FILENAMES="${FILENAMES#,}"
 
 R --slave --no-save << __EOF__
 filenames <- c(${FILENAMES})

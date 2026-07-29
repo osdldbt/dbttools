@@ -7,10 +7,10 @@
 #
 
 if [ $# -lt 5 ]; then
-	echo "$(basename $0) is the DBT transaction distribution plotter"
+	echo "$(basename "$0") is the DBT transaction distribution plotter"
 	echo ""
 	echo "Usage:"
-	echo "  $(basename $0) <txn name> <txn id> <output directory> <color index> <log0> [log1 [...]]"
+	echo "  $(basename "$0") <txn name> <txn id> <output directory> <color index> <log0> [log1 [...]]"
 	echo ""
 	echo "Options"
 	echo "  txn name            name to use on the chart title"
@@ -30,19 +30,19 @@ shift
 COLOR=$1
 shift
 
-mkdir -p ${OUTPUTDIR}
+mkdir -p "${OUTPUTDIR}"
 if [ ! -d "${OUTPUTDIR}" ]; then
 	echo "Failed to create directory ${OUTPUTDIR}"
 	exit 1
 fi
 
-# Covert the list of file names from the comand line into a quoted and comma
-# separated list for R.
+# Convert the list of file names from the command line into a quoted and
+# comma separated list for R.
 FILENAMES=""
-for FILENAME in $@; do
-	FILENAMES="$FILENAMES \"$FILENAME\""
+for FILENAME in "$@"; do
+	FILENAMES="${FILENAMES},\"${FILENAME}\""
 done
-FILENAMES=$(echo $FILENAMES | sed -e "s/ /,/g")
+FILENAMES="${FILENAMES#,}"
 
 R --slave --no-save << __EOF__
 filenames <- c(${FILENAMES})

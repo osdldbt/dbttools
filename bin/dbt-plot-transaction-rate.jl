@@ -8,10 +8,10 @@
 
 #=
 if [ $# -lt 6 ]; then
-	echo "$(basename $0) is the DBT transaction rate plotter"
+	echo "$(basename "$0") is the DBT transaction rate plotter"
 	echo ""
 	echo "Usage:"
-	echo "  $(basename $0) <txn name> <txn id> <rate> <output directory> <color index> <log0> [log1 [...]]"
+	echo "  $(basename "$0") <txn name> <txn id> <rate> <output directory> <color index> <log0> [log1 [...]]"
 	echo ""
 	echo "Options"
 	echo "  txn name            name to use on the chart title"
