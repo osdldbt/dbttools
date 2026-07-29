@@ -88,6 +88,8 @@ function main()
             "color" => ARGS[4],
     )
 
+    mkpath(params["outputdir"])
+
     df = load(ARGS[5:end], params)
     plot(df, params)
 end

@@ -106,6 +106,8 @@ function main()
         throw(DomainError(params["rate"], "this rate is unhandled"))
     end
 
+    mkpath(params["outputdir"])
+
     df = load(ARGS[6:end], params)
     plot(df, params)
 end

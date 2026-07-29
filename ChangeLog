@@ -17,6 +17,8 @@ vX.Y.Z (YYYY-MM-DD)
   thing: elapsed minutes since the earliest logged event on the x-axis, and
   tps averaged over the seconds a minute actually covers so partial minutes
   are not undercounted
+- Create the output directory in the Julia plot scripts like the gnuplot and
+  R versions do
 
 v0.5.1 (2024-07-31)
 
