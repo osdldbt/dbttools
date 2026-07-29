@@ -55,6 +55,12 @@ function load(filenames, params)
     gdf = groupby(df, [:ctime]; sort=true)
     df = combine(gdf, nrow => :count)
 
+    # A tpm chart plots the per-minute counts directly; a tps chart
+    # averages them over the minute.
+    if params["rate"] == "tps"
+        df.count = df.count ./ 60
+    end
+
     return df
 end
 

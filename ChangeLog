@@ -11,6 +11,8 @@ vX.Y.Z (YYYY-MM-DD)
 - Clean up temporary file handling in the gnuplot plot scripts: remove a stray
   import of an empty file, quote log file names on import, and remove
   temporary files on interruption
+- Fix the Julia transaction rate plot script to average per-minute counts
+  when charting transactions per second, matching the gnuplot and R versions
 
 v0.5.1 (2024-07-31)
 
