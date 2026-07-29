@@ -8,6 +8,12 @@
 
 SIZE="1600,1000"
 
+cleanup() {
+	rm -f "${DATAFILE}"
+}
+
+trap 'cleanup; exit 1' INT QUIT ABRT TERM
+
 if [ $# -lt 5 ]; then
 	echo "$(basename "${0}") is the DBT transaction distribution plotter"
 	echo ""
@@ -61,4 +67,4 @@ set key off
 plot datafile using 1:2 notitle with points
 EOF
 
-rm -f "${DATAFILE}"
+cleanup

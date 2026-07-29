@@ -8,6 +8,9 @@ vX.Y.Z (YYYY-MM-DD)
 - Exit successfully from -h in the PostgreSQL report generators and tighten
   the sed expressions that derive metric names from chart file names
 - Fix transaction filter expression in the R transaction rate plot script
+- Clean up temporary file handling in the gnuplot plot scripts: remove a stray
+  import of an empty file, quote log file names on import, and remove
+  temporary files on interruption
 
 v0.5.1 (2024-07-31)
 

@@ -12,7 +12,7 @@ cleanup() {
 	rm -rf "${TMPDIR}" "${DATAFILE}"
 }
 
-trap cleanup INT QUIT ABRT TERM
+trap 'cleanup; exit 1' INT QUIT ABRT TERM
 
 if [ $# -lt 6 ]; then
 	echo "$(basename "${0}") is the DBT transaction rate plotter"
@@ -74,17 +74,15 @@ EOF
 for FILE in "${@}"; do
 	sqlite3 "${DBFILE}" <<- EOF
 		.mode csv
-		.import $FILE mix
+		.import "$FILE" mix
 	EOF
 done
 
 DATAFILE=$(mktemp)
 
 sqlite3 "${DBFILE}" <<- EOF
-.mode csv
-.import $DATAFILE mix
-CREATE INDEX mix_time_txn
-ON mix (time,txn);
+	CREATE INDEX mix_time_txn
+	ON mix (time,txn);
 EOF
 
 if [ "${RATE}" = "tpm" ]; then
@@ -126,6 +124,6 @@ set key off
 plot datafile using 1:2 notitle with linespoints
 EOF
 
- cleanup
+cleanup
 
- exit 0
+exit 0
