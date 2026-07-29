@@ -54,7 +54,7 @@ while getopts "hi:t:" opt; do
 		;;
 	h)
 		usage
-		exit 1
+		exit 0
 		;;
 	t)
 		TITLE=$OPTARG
@@ -97,7 +97,7 @@ done
 # Create report showing all indexes for a metric.
 
 INDEXMETRICS=$( (cd "$INDIR/index" && ls ./*.png) 2> /dev/null | \
-		sed -e "s/^.\/pgsql-*.*.*-//" | sed -e "s/.png$//" | sort | uniq)
+		sed -e "s/^\.\/pgsql-.*-//" -e "s/\.png$//" | sort -u)
 
 for METRIC in $INDEXMETRICS; do
 	OUTDIR="${INDIR}/index-stat/i_${METRIC}"

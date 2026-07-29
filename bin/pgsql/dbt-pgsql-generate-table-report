@@ -53,7 +53,7 @@ while getopts "hi:t:" opt; do
 		;;
 	h)
 		usage
-		exit 1
+		exit 0
 		;;
 	t)
 		TITLE=$OPTARG
@@ -95,7 +95,7 @@ done
 # Create reports by table metrics.
 
 TABLEMETRICS=$( (cd "${INDIR}/table" && ls ./*.png) 2> /dev/null | \
-		sed -e "s/^.\/pgsql-*.*-//" | sed -e "s/.png$//" | sort | uniq)
+		sed -e "s/^\.\/pgsql-.*-//" -e "s/\.png$//" | sort -u)
 
 for METRIC in $TABLEMETRICS; do
 	OUTDIR="${INDIR}/table-stat/t_${METRIC}"

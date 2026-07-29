@@ -5,6 +5,8 @@ vX.Y.Z (YYYY-MM-DD)
   require the database name to be set with -d
 - Exclude pg_catalog indexes from the per-metric pages of the PostgreSQL index
   report, matching the per-index pages
+- Exit successfully from -h in the PostgreSQL report generators and tighten
+  the sed expressions that derive metric names from chart file names
 
 v0.5.1 (2024-07-31)
 
