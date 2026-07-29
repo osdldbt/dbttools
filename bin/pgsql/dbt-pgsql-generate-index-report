@@ -32,7 +32,8 @@ image_links()
 
 image_links_by_metric()
 {
-	grep ^public "$INDEXLISTFILE" | while IFS= read -r INDEX; do
+	grep ^public "$INDEXLISTFILE" | grep -v "\.pg_catalog\." | \
+			while IFS= read -r INDEX; do
 		echo ".. image:: ../../index/pgsql-${INDEX}-${METRIC}.png"
 		echo "   :target: ../../index/pgsql-${INDEX}-${METRIC}.png"
 		echo "   :width: 100%"

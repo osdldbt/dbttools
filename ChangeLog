@@ -3,6 +3,8 @@ vX.Y.Z (YYYY-MM-DD)
 - shellcheck linting
 - Fix undefined error function in the PostgreSQL database report generator and
   require the database name to be set with -d
+- Exclude pg_catalog indexes from the per-metric pages of the PostgreSQL index
+  report, matching the per-index pages
 
 v0.5.1 (2024-07-31)
 
