@@ -1,3 +1,7 @@
+vX.Y.Z (YYYY-MM-DD)
+
+- shellcheck linting
+
 v0.5.1 (2024-07-31)
 
 - Average transaction per second rate charts over a minute to be more readable
