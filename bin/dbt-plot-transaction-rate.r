@@ -41,10 +41,8 @@ fi
 
 if [ "${RATE}" = "tpm" ]; then
 	YLABEL="Minute"
-	TIMEFACTOR=1
 elif [ "${RATE}" = "tps" ]; then
 	YLABEL="Second"
-	TIMEFACTOR=60
 else
 	echo "ERROR: unknown rate ${RATE}"
 	exit 1
@@ -70,14 +68,19 @@ colnames(df)[3] <- 'count'
 color <- rainbow(length(unique(df\$txn[df\$txn != "START" &
                                        df\$txn != "TERMINATED"])))
 
-# Convert ctime to elapsed time and filter for specific transaction to plot.
-starttime = df[1,]\$ctime
-df\$ctime <- ceiling((df\$ctime - starttime) / 60)
+# Convert ctime to elapsed time, using the earliest event in the logs as
+# time zero, and filter for specific transaction to plot.
+starttime <- min(df\$ctime)
+duration <- max(df\$ctime) - starttime + 1
+df\$ctime <- floor((df\$ctime - starttime) / 60)
 df <- df[df\$txn == "${TXN_TAG}",]
 
-# Aggregate counts and convert to desired rate.
+# Aggregate counts per minute; for tps, average each minute over the
+# seconds it actually covers.
 df <- aggregate(count ~ txn + ctime, df, length)
-df\$count <- df\$count / $TIMEFACTOR
+if ("${RATE}" == "tps") {
+    df\$count <- df\$count / pmin(60, duration - df\$ctime * 60)
+}
 
 bitmap("${OUTPUTDIR}/t${TXN_TAG}-transaction-rate.png",
        type="png16m", units="px", width=1280, height=800, res=150, taa=4,

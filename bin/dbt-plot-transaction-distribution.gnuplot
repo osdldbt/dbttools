@@ -46,19 +46,22 @@ fi
 
 DATAFILE=$(mktemp)
 
+# Use the earliest event in any of the logs as time zero, per the R and
+# Julia versions of this script.
+START=$(awk -F ',' \
+		'START == "" || $1 < START {START = $1} END {print START}' \
+		"${@}")
+
 for FILENAME in "${@}"; do
-	awk -F ',' -v TXN="${TXN_TAG}" '$2 == TXN {print $1, $4}' "${FILENAME}" \
-			>> "${DATAFILE}"
+	awk -F ',' -v TXN="${TXN_TAG}" -v START="${START}" \
+			'$2 == TXN {print ($1 - START) / 60, $4}' \
+			"${FILENAME}" >> "${DATAFILE}"
 done
 
 gnuplot << EOF
 datafile = "${DATAFILE}"
-set xdata time
-set timefmt "%s"
 set terminal pngcairo size $SIZE
-set xlabel "Time"
-set xtics rotate
-set xtics format "%R"
+set xlabel "Elapsed Time (minutes)"
 set grid
 set title "${TXN_NAME} Transaction Response Time Distribution" noenhanced
 set output "${OUTPUTDIR}/t${TXN_TAG}-distribution.png"

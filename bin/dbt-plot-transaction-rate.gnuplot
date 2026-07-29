@@ -85,22 +85,30 @@ sqlite3 "${DBFILE}" <<- EOF
 	ON mix (time,txn);
 EOF
 
+# Bucket by minutes elapsed since the earliest event in the logs, per the
+# R and Julia versions of this script.  For tps, average each minute over
+# the seconds it actually covers so a partial trailing minute is not
+# undercounted.
 if [ "${RATE}" = "tpm" ]; then
 	sqlite3 "${DBFILE}" <<- EOF > "${DATAFILE}"
-		SELECT (time / 60) * 60, count(time)
-		FROM mix
-		WHERE txn = '${TXN_TAG}'
-        GROUP BY 1
-		ORDER BY 1;
-	EOF
-elif [ "${RATE}" = "tps" ]; then
-	sqlite3 "${DBFILE}" <<- EOF > "${DATAFILE}"
-        SELECT (cast(time AS INTEGER) / 60) * 60
-		     , cast(count(time) AS REAL) / 60.0
+		SELECT (time - (SELECT min(time) FROM mix)) / 60, count(time)
 		FROM mix
 		WHERE txn = '${TXN_TAG}'
 		GROUP BY 1
 		ORDER BY 1;
+	EOF
+elif [ "${RATE}" = "tps" ]; then
+	sqlite3 "${DBFILE}" <<- EOF > "${DATAFILE}"
+		SELECT bucket
+		     , cast(cnt AS REAL) / min(60, duration - bucket * 60)
+		FROM (
+		    SELECT (time - (SELECT min(time) FROM mix)) / 60 AS bucket
+		         , count(time) AS cnt
+		    FROM mix
+		    WHERE txn = '${TXN_TAG}'
+		    GROUP BY 1
+		), (SELECT max(time) - min(time) + 1 AS duration FROM mix)
+		ORDER BY bucket;
 	EOF
 else
 	echo "ERROR: unknown rate ${RATE}"
@@ -110,12 +118,8 @@ fi
 gnuplot << EOF
 datafile = "${DATAFILE}"
 set datafile separator "|"
-set xdata time
-set timefmt "%s"
 set terminal pngcairo size $SIZE
-set xlabel "Time"
-set xtics rotate
-set xtics format "%R"
+set xlabel "Elapsed Time (minutes)"
 set grid
 set title "${TXN_NAME} Transaction Rate" noenhanced
 set output "${OUTPUTDIR}/t${TXN_TAG}-transaction-rate.png"

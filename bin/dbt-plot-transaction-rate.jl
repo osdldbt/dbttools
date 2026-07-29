@@ -47,18 +47,19 @@ function load(filenames, params)
     # transaction response time per specified rate.
 
     start_time = minimum(df.ctime)
+    duration = maximum(df.ctime) - start_time + 1
     df = df[df.transaction .== params["txn_tag"], [:ctime]]
     transform!(
             df,
-            :ctime => ByRow(x -> ceil(Int, (x - start_time) / 60)) => :ctime
+            :ctime => ByRow(x -> div(x - start_time, 60)) => :ctime
     )
     gdf = groupby(df, [:ctime]; sort=true)
     df = combine(gdf, nrow => :count)
 
     # A tpm chart plots the per-minute counts directly; a tps chart
-    # averages them over the minute.
+    # averages each minute over the seconds it actually covers.
     if params["rate"] == "tps"
-        df.count = df.count ./ 60
+        df.count = df.count ./ min.(60, duration .- df.ctime .* 60)
     end
 
     return df

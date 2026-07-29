@@ -13,6 +13,10 @@ vX.Y.Z (YYYY-MM-DD)
   temporary files on interruption
 - Fix the Julia transaction rate plot script to average per-minute counts
   when charting transactions per second, matching the gnuplot and R versions
+- Make the gnuplot, R, and Julia transaction plot scripts chart the same
+  thing: elapsed minutes since the earliest logged event on the x-axis, and
+  tps averaged over the seconds a minute actually covers so partial minutes
+  are not undercounted
 
 v0.5.1 (2024-07-31)
 

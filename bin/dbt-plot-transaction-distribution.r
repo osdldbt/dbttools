@@ -55,10 +55,12 @@ colnames(df)[4] <- 'response'
 # compendate.
 color <- rainbow(length(unique(df\$txn)) - 2)
 
+# Use the earliest event in the logs as time zero.
+starttime <- min(df\$ctime)
+
 df <- subset(df, df\$txn == "${TXN_TAG}")
 
 # Convert ctime to elapsed time in minutes
-starttime = df[1,]\$ctime
 df\$ctime <- (df\$ctime - starttime) / 60
 
 bitmap("${OUTPUTDIR}/t${TXN_TAG}-distribution.png",
