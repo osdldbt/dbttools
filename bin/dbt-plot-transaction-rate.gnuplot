@@ -123,7 +123,7 @@ set xlabel "Elapsed Time (minutes)"
 set grid
 set title "${TXN_NAME} Transaction Rate" noenhanced
 set output "${OUTPUTDIR}/t${TXN_TAG}-transaction-rate.png"
-set ylabel "Transaction per ${YLABEL}"
+set ylabel "Transactions per ${YLABEL}"
 set key off
 plot datafile using 1:2 notitle with linespoints
 EOF

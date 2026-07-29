@@ -23,6 +23,8 @@ vX.Y.Z (YYYY-MM-DD)
   cache directory so concurrent users do not collide
 - Add -h flag to dbt-plot and use POSIX command -v instead of which in
   dbt-plot and dbt-version
+- Fix typos in usage messages and comments, and use "Transactions per" on
+  rate chart y-axis labels in every language
 
 v0.5.1 (2024-07-31)
 

@@ -88,7 +88,7 @@ bitmap("${OUTPUTDIR}/t${TXN_TAG}-transaction-rate.png",
 plot(df\$ctime, df\$count, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$count)), type = "b", col = color[${COLOR}],
      main="$TXN_NAME Transaction Rate",
-     xlab="Elapsed Time (minutes)", ylab="Transaction per ${YLABEL}")
+     xlab="Elapsed Time (minutes)", ylab="Transactions per ${YLABEL}")
 grid(col="gray")
 invisible(dev.off())
 __EOF__

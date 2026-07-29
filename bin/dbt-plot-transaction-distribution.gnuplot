@@ -22,7 +22,7 @@ if [ $# -lt 5 ]; then
 	echo ""
 	echo "Options"
 	echo "  txn name            name to use on the chart title"
-	echo "  txn id              identifer used in the log file"
+	echo "  txn id              identifier used in the log file"
 	echo "  output directory    path to output charts"
 	echo "  color index         number for selecting plot color"
 	echo "  log                 log file to load"
