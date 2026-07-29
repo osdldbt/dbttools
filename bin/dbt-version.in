@@ -24,11 +24,11 @@ display_version()
 {
 	NAME=$1
 	FLAG=$2
-	if ! which "${NAME}" > /dev/null 2>&1; then
+	if ! command -v "${NAME}" > /dev/null 2>&1; then
 		echo "$NAME not found"
 		return
 	fi
-	CMD="$(which "${NAME}") ${FLAG}"
+	CMD="$(command -v "${NAME}") ${FLAG}"
 	echo ""
 	echo "${CMD}"
 	eval "${CMD}"

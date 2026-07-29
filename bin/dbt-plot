@@ -6,29 +6,39 @@
 # Copyright The DBT Tools Authors
 #
 
+usage()
+{
+	echo "$(basename "$0") is the DBT plot runner"
+	echo ""
+	echo "Usage:"
+	echo "  $(basename "$0") TYPE [OPTION]"
+	echo
+}
+
+if [ "$1" = "-h" ]; then
+	usage
+	exit 0
+fi
+
 if [ $# -lt 1 ]; then
-    echo "$(basename "$0") is the DBT plot runner"
-    echo ""
-    echo "Usage:"
-    echo "  $(basename "$0") TYPE [OPTION]"
-    echo
+	usage
 	exit 1
 fi
 
 if [ "$DBTLANG" = "" ]; then
 	# Ordered preference of which language usually runs faster.
-	if which "gnuplot" > /dev/null 2>&1; then
+	if command -v "gnuplot" > /dev/null 2>&1; then
 		DBTLANG="gnuplot"
-	elif which "R" > /dev/null 2>&1; then
+	elif command -v "R" > /dev/null 2>&1; then
 		DBTLANG="R"
-	elif which "julia" > /dev/null 2>&1; then
+	elif command -v "julia" > /dev/null 2>&1; then
 		DBTLANG="julia"
 	else
 		echo "ERROR: 'gnuplot', 'julia' nor 'R' detected for post processing"
 		exit 1
 	fi
 else
-	if ! which "$DBTLANG" > /dev/null 2>&1; then
+	if ! command -v "$DBTLANG" > /dev/null 2>&1; then
 		echo "ERROR: $DBTLANG not detected, set to 'gnuplot', 'R' or 'julia', "
 		echo "or unset to let the script autodetect"
 		exit 1
@@ -48,9 +58,9 @@ shift
 
 PSCRIPT="dbt-plot-${MODULE}.${PPEXT}"
 
-if ! which "$PSCRIPT" > /dev/null 2>&1; then
-		echo "ERROR: $PSCRIPT not found in PATH"
-		exit 1
+if ! command -v "$PSCRIPT" > /dev/null 2>&1; then
+	echo "ERROR: $PSCRIPT not found in PATH"
+	exit 1
 fi
 
 if [ "$DBTLANG" = "julia" ]; then
