@@ -19,6 +19,8 @@ vX.Y.Z (YYYY-MM-DD)
   are not undercounted
 - Create the output directory in the Julia plot scripts like the gnuplot and
   R versions do
+- Move the private Julia package depot from a fixed /tmp path to a per-user
+  cache directory so concurrent users do not collide
 
 v0.5.1 (2024-07-31)
 

@@ -54,13 +54,13 @@ if ! which "$PSCRIPT" > /dev/null 2>&1; then
 fi
 
 if [ "$DBTLANG" = "julia" ]; then
-	# Set up the depot in temp to not interfere with whatever packages that
-	# already exist.
-	DBT2_JULIA_DEPOT_PATH="/tmp/.dbt2-julia"
+	# Set up a private, per-user depot so package installation does not
+	# interfere with whatever packages already exist.
+	DBT_JULIA_DEPOT_PATH="${XDG_CACHE_HOME:-${HOME}/.cache}/dbttools/julia"
 	if [ "$JULIA_DEPOT_PATH" = "" ]; then
-		export JULIA_DEPOT_PATH="${DBT2_JULIA_DEPOT_PATH}"
+		export JULIA_DEPOT_PATH="${DBT_JULIA_DEPOT_PATH}"
 	else
-		export JULIA_DEPOT_PATH="${DBT2_JULIA_DEPOT_PATH}:${JULIA_DEPOT_PATH}"
+		export JULIA_DEPOT_PATH="${DBT_JULIA_DEPOT_PATH}:${JULIA_DEPOT_PATH}"
 	fi
 
 	# Make sure package dependencies are installed.
