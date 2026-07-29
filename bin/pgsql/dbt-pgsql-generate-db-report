@@ -19,6 +19,11 @@ usage()
 	echo "  -t TITLE    title of the report"
 }
 
+error() {
+	echo "ERROR: $*"
+	exit 1
+}
+
 image_links()
 {
 	find "${INDIR}/db" -name '*.png' | while IFS= read -r CHART; do
@@ -53,8 +58,11 @@ while getopts "d:hi:t:" opt; do
 done
 
 if [ "$INDIR" = "" ]; then
-	error "Error: input was not specified with -i"
-	exit 1
+	error "input path was not specified with -i"
+fi
+
+if [ "$DBNAME" = "" ]; then
+	error "dbname was not specified with -d"
 fi
 
 mkdir -p "${INDIR}/db/${DBNAME}"

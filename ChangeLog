@@ -1,6 +1,8 @@
 vX.Y.Z (YYYY-MM-DD)
 
 - shellcheck linting
+- Fix undefined error function in the PostgreSQL database report generator and
+  require the database name to be set with -d
 
 v0.5.1 (2024-07-31)
 
