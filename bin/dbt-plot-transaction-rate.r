@@ -73,7 +73,7 @@ color <- rainbow(length(unique(df\$txn[df\$txn != "START" &
 # Convert ctime to elapsed time and filter for specific transaction to plot.
 starttime = df[1,]\$ctime
 df\$ctime <- ceiling((df\$ctime - starttime) / 60)
-df <- df[order(df\$ctime, decreasing=FALSE) & df\$txn == "${TXN_TAG}",]
+df <- df[df\$txn == "${TXN_TAG}",]
 
 # Aggregate counts and convert to desired rate.
 df <- aggregate(count ~ txn + ctime, df, length)
