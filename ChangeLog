@@ -27,6 +27,9 @@ vX.Y.Z (YYYY-MM-DD)
   rate chart y-axis labels in every language
 - Report Julia package installation and depot creation failures in dbt-plot
   instead of discarding them and failing later with a confusing error
+- Detect installed Julia packages by querying the project dependencies rather
+  than counting Pkg.status output lines, which reinstalled a package on every
+  run once a newer version became available
 
 v0.5.1 (2024-07-31)
 

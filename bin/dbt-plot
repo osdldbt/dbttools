@@ -82,9 +82,9 @@ if [ "$DBTLANG" = "julia" ]; then
 
 	PACKAGES="CSV DataFrames VegaLite"
 	for PACKAGE in $PACKAGES; do
-		COUNT=$(julia -q -e "import Pkg; Pkg.status(\"${PACKAGE}\")" \
-				2> /dev/null | wc -l)
-		if [ "$COUNT" -ne 2 ]; then
+		INSTALLED="import Pkg
+			exit(haskey(Pkg.project().dependencies, \"${PACKAGE}\") ? 0 : 1)"
+		if ! julia -q -e "${INSTALLED}" > /dev/null 2>&1; then
 			echo "Installing Julia package ${PACKAGE}..."
 			if ! julia -q -e "import Pkg; Pkg.add(\"${PACKAGE}\")"; then
 				echo "ERROR: failed to install Julia package ${PACKAGE}"
