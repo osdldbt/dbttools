@@ -67,6 +67,11 @@ if [ "$DBTLANG" = "julia" ]; then
 	# Set up a private, per-user depot so package installation does not
 	# interfere with whatever packages already exist.
 	DBT_JULIA_DEPOT_PATH="${XDG_CACHE_HOME:-${HOME}/.cache}/dbttools/julia"
+	if ! mkdir -p "${DBT_JULIA_DEPOT_PATH}"; then
+		echo "ERROR: could not create Julia depot ${DBT_JULIA_DEPOT_PATH}"
+		echo "set JULIA_DEPOT_PATH to a writable directory"
+		exit 1
+	fi
 	if [ "$JULIA_DEPOT_PATH" = "" ]; then
 		export JULIA_DEPOT_PATH="${DBT_JULIA_DEPOT_PATH}"
 	else
@@ -77,9 +82,14 @@ if [ "$DBTLANG" = "julia" ]; then
 
 	PACKAGES="CSV DataFrames VegaLite"
 	for PACKAGE in $PACKAGES; do
-		COUNT=$(julia -q -e "import Pkg; Pkg.status(\"${PACKAGE}\")" | wc -l)
+		COUNT=$(julia -q -e "import Pkg; Pkg.status(\"${PACKAGE}\")" \
+				2> /dev/null | wc -l)
 		if [ "$COUNT" -ne 2 ]; then
-			julia -q -e "import Pkg; Pkg.add(\"${PACKAGE}\")" > /dev/null 2>&1
+			echo "Installing Julia package ${PACKAGE}..."
+			if ! julia -q -e "import Pkg; Pkg.add(\"${PACKAGE}\")"; then
+				echo "ERROR: failed to install Julia package ${PACKAGE}"
+				exit 1
+			fi
 		fi
 	done
 fi

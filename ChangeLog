@@ -25,6 +25,8 @@ vX.Y.Z (YYYY-MM-DD)
   dbt-plot and dbt-version
 - Fix typos in usage messages and comments, and use "Transactions per" on
   rate chart y-axis labels in every language
+- Report Julia package installation and depot creation failures in dbt-plot
+  instead of discarding them and failing later with a confusing error
 
 v0.5.1 (2024-07-31)
 
