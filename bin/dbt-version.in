@@ -28,10 +28,10 @@ display_version()
 		echo "$NAME not found"
 		return
 	fi
-	CMD="$(command -v "${NAME}") ${FLAG}"
+	CMD="$(command -v "${NAME}")"
 	echo ""
-	echo "${CMD}"
-	eval "${CMD}"
+	echo "${CMD} ${FLAG}"
+	"${CMD}" "${FLAG}"
 }
 
 VERBOSE=0
@@ -60,3 +60,5 @@ fi
 display_version gnuplot --version
 display_version julia --version
 display_version R --version
+display_version gs --version
+display_version sqlite3 --version

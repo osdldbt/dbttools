@@ -57,6 +57,8 @@ vX.Y.Z (YYYY-MM-DD)
 - Size the color palette in the R transaction distribution plot script by
   the transaction names, matching the transaction rate script, rather than
   assuming both the START and TERMINATED markers are present
+- Report the Ghostscript and sqlite3 versions from dbt-version, which the
+  R and gnuplot plot scripts respectively need at runtime
 
 v0.5.1 (2024-07-31)
 
