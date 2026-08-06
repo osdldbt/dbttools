@@ -30,8 +30,8 @@ table_list()
 
 image_links()
 {
-	find "${INDIR}" -name "pgsql-${TABLE}-*.png" | while IFS= read -r CHART
-	do
+	for CHART in "${INDIR}"/table/pgsql-"${TABLE}"-*.png; do
+		[ -f "$CHART" ] || continue
 		CHART=$(basename "$CHART")
 		echo ".. image:: ../${CHART}"
 		echo "   :target: ../${CHART}"
@@ -44,6 +44,7 @@ image_links_by_metric()
 {
 	while IFS= read -r TABLE; do
 		[ -n "$TABLE" ] || continue
+		[ -f "${INDIR}/table/pgsql-${TABLE}-${METRIC}.png" ] || continue
 		echo ".. image:: ../../table/pgsql-${TABLE}-${METRIC}.png"
 		echo "   :target: ../../table/pgsql-${TABLE}-${METRIC}.png"
 		echo "   :width: 100%"

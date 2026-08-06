@@ -46,6 +46,9 @@ vX.Y.Z (YYYY-MM-DD)
 - Stop the PostgreSQL report generators from reporting success after
   failing to create an output directory: the error was raised inside a
   loop fed by a pipe, which exits only the subshell running the loop
+- Look for charts only in the directory the report links are relative to,
+  and skip transactions and metrics with no chart, so the PostgreSQL
+  reports no longer link to files that are not there
 
 v0.5.1 (2024-07-31)
 

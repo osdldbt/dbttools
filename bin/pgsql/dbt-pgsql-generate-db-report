@@ -27,7 +27,8 @@ error() {
 
 image_links()
 {
-	find "${INDIR}/db" -name '*.png' | while IFS= read -r CHART; do
+	for CHART in "${INDIR}"/db/*.png; do
+		[ -f "$CHART" ] || continue
 		CHART="$(basename "$CHART")"
 		echo ".. image:: ../${CHART}"
 		echo "   :target: ../${CHART}"

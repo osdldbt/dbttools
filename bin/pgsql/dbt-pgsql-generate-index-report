@@ -25,8 +25,8 @@ index_list()
 
 image_links()
 {
-	find "${INDIR}" -name "pgsql-${INDEX}-*.png" | while IFS= read -r CHART
-	do
+	for CHART in "${INDIR}"/index/pgsql-"${INDEX}"-*.png; do
+		[ -f "$CHART" ] || continue
 		CHART=$(basename "$CHART")
 		echo ".. image:: ../${CHART}"
 		echo "   :target: ../${CHART}"
@@ -39,6 +39,7 @@ image_links_by_metric()
 {
 	while IFS= read -r INDEX; do
 		[ -n "$INDEX" ] || continue
+		[ -f "${INDIR}/index/pgsql-${INDEX}-${METRIC}.png" ] || continue
 		echo ".. image:: ../../index/pgsql-${INDEX}-${METRIC}.png"
 		echo "   :target: ../../index/pgsql-${INDEX}-${METRIC}.png"
 		echo "   :width: 100%"
