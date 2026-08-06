@@ -43,6 +43,9 @@ vX.Y.Z (YYYY-MM-DD)
 - Fail with a message naming the transaction when a plot script finds no
   matching transactions, in every language, rather than failing further
   along with a message about axis ranges or leaving an empty chart
+- Stop the PostgreSQL report generators from reporting success after
+  failing to create an output directory: the error was raised inside a
+  loop fed by a pipe, which exits only the subshell running the loop
 
 v0.5.1 (2024-07-31)
 

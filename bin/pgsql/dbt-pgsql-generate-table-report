@@ -19,8 +19,13 @@ usage()
 }
 
 error() {
-	echo "ERROR: $*"
+	echo "ERROR: $*" >&2
 	exit 1
+}
+
+table_list()
+{
+	grep ^public "$TABLELISTFILE"
 }
 
 image_links()
@@ -37,12 +42,15 @@ image_links()
 
 image_links_by_metric()
 {
-	grep ^public "$TABLELISTFILE" | while IFS= read -r TABLE; do
+	while IFS= read -r TABLE; do
+		[ -n "$TABLE" ] || continue
 		echo ".. image:: ../../table/pgsql-${TABLE}-${METRIC}.png"
 		echo "   :target: ../../table/pgsql-${TABLE}-${METRIC}.png"
 		echo "   :width: 100%"
 		echo ""
-	done
+	done << __EOF__
+$(table_list)
+__EOF__
 }
 
 while getopts "hi:t:" opt; do
@@ -75,7 +83,9 @@ fi
 
 # Create reports for table statistics.
 
-grep ^public "$TABLELISTFILE" | while IFS= read -r TABLE; do
+while IFS= read -r TABLE; do
+	[ -n "$TABLE" ] || continue
+
 	OUTDIR="${INDIR}/table/${TABLE}"
 	mkdir -p "$OUTDIR"
 	if [ ! -d "$OUTDIR" ]; then
@@ -90,7 +100,9 @@ $TITLE $TABLE Table Charts
 
 $(image_links)
 __EOF__
-done
+done << __EOF__
+$(table_list)
+__EOF__
 
 # Create reports by table metrics.
 

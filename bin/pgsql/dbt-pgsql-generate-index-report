@@ -18,6 +18,11 @@ usage()
 	echo "  -t TITLE    title of the report"
 }
 
+index_list()
+{
+	grep ^public "$INDEXLISTFILE" | grep -v "\.pg_catalog\."
+}
+
 image_links()
 {
 	find "${INDIR}" -name "pgsql-${INDEX}-*.png" | while IFS= read -r CHART
@@ -32,17 +37,19 @@ image_links()
 
 image_links_by_metric()
 {
-	grep ^public "$INDEXLISTFILE" | grep -v "\.pg_catalog\." | \
-			while IFS= read -r INDEX; do
+	while IFS= read -r INDEX; do
+		[ -n "$INDEX" ] || continue
 		echo ".. image:: ../../index/pgsql-${INDEX}-${METRIC}.png"
 		echo "   :target: ../../index/pgsql-${INDEX}-${METRIC}.png"
 		echo "   :width: 100%"
 		echo ""
-	done
+	done << __EOF__
+$(index_list)
+__EOF__
 }
 
 error() {
-	echo "ERROR: $*"
+	echo "ERROR: $*" >&2
 	exit 1
 }
 
@@ -76,8 +83,9 @@ fi
 
 # Create report listing stats for an index.
 
-grep ^public "$INDEXLISTFILE" | grep -v "\.pg_catalog\." | \
-		while IFS= read -r INDEX; do
+while IFS= read -r INDEX; do
+	[ -n "$INDEX" ] || continue
+
 	OUTDIR="${INDIR}/index/${INDEX}"
 	mkdir -p "$OUTDIR"
 	if [ ! -d "$OUTDIR" ]; then
@@ -92,7 +100,9 @@ $TITLE $INDEX Index Charts
 
 $(image_links)
 __EOF__
-done
+done << __EOF__
+$(index_list)
+__EOF__
 
 # Create report showing all indexes for a metric.
 
@@ -103,7 +113,7 @@ for METRIC in $INDEXMETRICS; do
 	OUTDIR="${INDIR}/index-stat/i_${METRIC}"
 	mkdir -p "$OUTDIR"
 	if [ ! -d "$OUTDIR" ]; then
-		error "ERROR: could not create directory $OUTDIR"
+		error "could not create directory $OUTDIR"
 	fi
 
 	METRICCHARTFILE="${OUTDIR}/index.rst"

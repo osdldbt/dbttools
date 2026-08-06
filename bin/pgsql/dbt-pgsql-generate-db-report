@@ -15,12 +15,13 @@ usage()
 	echo ""
 	echo "Options:"
 	echo "  -d DBNAME   dbname to generate report about"
+	echo "  -h          display this help and exit"
 	echo "  -i PATH     path to input files"
 	echo "  -t TITLE    title of the report"
 }
 
 error() {
-	echo "ERROR: $*"
+	echo "ERROR: $*" >&2
 	exit 1
 }
 
@@ -65,9 +66,13 @@ if [ "$DBNAME" = "" ]; then
 	error "dbname was not specified with -d"
 fi
 
-mkdir -p "${INDIR}/db/${DBNAME}"
+OUTDIR="${INDIR}/db/${DBNAME}"
+mkdir -p "$OUTDIR"
+if [ ! -d "$OUTDIR" ]; then
+	error "could not create directory $OUTDIR"
+fi
 
-cat << __EOF__ > "${INDIR}/db/${DBNAME}/index.rst"
+cat << __EOF__ > "${OUTDIR}/index.rst"
 ================================================================================
 $TITLE Database Charts
 ================================================================================
