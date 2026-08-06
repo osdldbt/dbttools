@@ -140,6 +140,10 @@ if ! sqlite3 "${DBFILE}" "${QUERY}" > "${DATAFILE}"; then
 	error "could not aggregate the ${RATE} data"
 fi
 
+if [ ! -s "${DATAFILE}" ]; then
+	error "no ${TXN_TAG} transactions found in the logs"
+fi
+
 gnuplot << EOF
 datafile = "${DATAFILE}"
 set datafile separator "|"

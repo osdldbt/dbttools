@@ -49,6 +49,11 @@ function load(filenames, params)
     start_time = minimum(df.ctime)
     duration = maximum(df.ctime) - start_time + 1
     df = df[df.transaction .== params["txn_tag"], [:ctime]]
+    if nrow(df) == 0
+        println(stderr, "ERROR: no " * params["txn_tag"] *
+                        " transactions found in the logs")
+        exit(1)
+    end
     transform!(
             df,
             :ctime => ByRow(x -> div(x - start_time, 60)) => :ctime

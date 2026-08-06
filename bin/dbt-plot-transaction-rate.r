@@ -75,6 +75,11 @@ duration <- max(df\$ctime) - starttime + 1
 df\$ctime <- floor((df\$ctime - starttime) / 60)
 df <- df[df\$txn == "${TXN_TAG}",]
 
+if (nrow(df) == 0) {
+    write("ERROR: no ${TXN_TAG} transactions found in the logs", stderr())
+    quit(save = "no", status = 1)
+}
+
 # Aggregate counts per minute; for tps, average each minute over the
 # seconds it actually covers.  na.pass keeps rows whose status column is
 # NA, which the formula interface would otherwise drop before counting.

@@ -40,6 +40,9 @@ vX.Y.Z (YYYY-MM-DD)
 - Report the gnuplot exit status from the transaction rate plot script as
   well, which always exited successfully and so hid every failure, and
   check the status of the sqlite3 calls that stage the log data
+- Fail with a message naming the transaction when a plot script finds no
+  matching transactions, in every language, rather than failing further
+  along with a message about axis ranges or leaving an empty chart
 
 v0.5.1 (2024-07-31)
 

@@ -8,6 +8,11 @@
 
 SIZE="1600,1000"
 
+error() {
+	echo "ERROR: $*" >&2
+	exit 1
+}
+
 # Only remove paths this script created.  The trap is in place before
 # DATAFILE is assigned, so an empty value means there is nothing to do.
 # shellcheck disable=SC2317  # invoked by the EXIT trap below
@@ -49,8 +54,7 @@ shift
 
 mkdir -p "${OUTPUTDIR}"
 if [ ! -d "${OUTPUTDIR}" ]; then
-	echo "Failed to create directory ${OUTPUTDIR}"
-	exit 1
+	error "Failed to create directory ${OUTPUTDIR}"
 fi
 
 DATAFILE=$(mktemp)
@@ -66,6 +70,10 @@ for FILENAME in "${@}"; do
 			'$2 == TXN {print ($1 - START) / 60, $4}' \
 			"${FILENAME}" >> "${DATAFILE}"
 done
+
+if [ ! -s "${DATAFILE}" ]; then
+	error "no ${TXN_TAG} transactions found in the logs"
+fi
 
 gnuplot << EOF
 datafile = "${DATAFILE}"

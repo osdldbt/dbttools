@@ -60,6 +60,11 @@ starttime <- min(df\$ctime)
 
 df <- subset(df, df\$txn == "${TXN_TAG}")
 
+if (nrow(df) == 0) {
+    write("ERROR: no ${TXN_TAG} transactions found in the logs", stderr())
+    quit(save = "no", status = 1)
+}
+
 # Convert ctime to elapsed time in minutes
 df\$ctime <- (df\$ctime - starttime) / 60
 
