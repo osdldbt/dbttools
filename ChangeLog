@@ -54,6 +54,9 @@ vX.Y.Z (YYYY-MM-DD)
   an unsupported language instead of failing on a truncated script name
 - Anchor both axes at zero in the gnuplot and Julia plot scripts
 - Make all script plot to the same 1600x1000 image size
+- Size the color palette in the R transaction distribution plot script by
+  the transaction names, matching the transaction rate script, rather than
+  assuming both the START and TERMINATED markers are present
 
 v0.5.1 (2024-07-31)
 

@@ -51,9 +51,8 @@ colnames(df)[1] <- 'ctime'
 colnames(df)[2] <- 'txn'
 colnames(df)[4] <- 'response'
 
-# This will generate color options for markers in the mix log, manually
-# compensate.
-color <- rainbow(length(unique(df\$txn)) - 2)
+color <- rainbow(length(unique(df\$txn[df\$txn != "START" &
+                                      df\$txn != "TERMINATED"])))
 
 # Use the earliest event in the logs as time zero.
 starttime <- min(df\$ctime)
