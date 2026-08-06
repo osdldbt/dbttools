@@ -8,8 +8,15 @@
 
 SIZE="1600,1000"
 
+# Only remove paths this script created.  The trap is in place before
+# these are assigned, so an empty value means there is nothing to do.
 cleanup() {
-	rm -rf "${TMPDIR}" "${DATAFILE}"
+	if [ -n "${WORKDIR}" ]; then
+		rm -rf "${WORKDIR}"
+	fi
+	if [ -n "${DATAFILE}" ]; then
+		rm -f "${DATAFILE}"
+	fi
 }
 
 trap 'cleanup; exit 1' INT QUIT ABRT TERM
@@ -56,8 +63,8 @@ else
 	exit 1
 fi
 
-TMPDIR=$(mktemp -d)
-DBFILE="${TMPDIR}/dbttools.db"
+WORKDIR=$(mktemp -d)
+DBFILE="${WORKDIR}/dbttools.db"
 
 sqlite3 "${DBFILE}" << EOF
 CREATE TABLE mix(

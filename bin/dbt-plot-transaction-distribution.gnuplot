@@ -8,8 +8,12 @@
 
 SIZE="1600,1000"
 
+# Only remove paths this script created.  The trap is in place before
+# DATAFILE is assigned, so an empty value means there is nothing to do.
 cleanup() {
-	rm -f "${DATAFILE}"
+	if [ -n "${DATAFILE}" ]; then
+		rm -f "${DATAFILE}"
+	fi
 }
 
 trap 'cleanup; exit 1' INT QUIT ABRT TERM
