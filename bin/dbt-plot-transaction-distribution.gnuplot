@@ -80,6 +80,8 @@ datafile = "${DATAFILE}"
 set terminal pngcairo size $SIZE
 set xlabel "Elapsed Time (minutes)"
 set grid
+set xrange [0:*]
+set yrange [0:*]
 set title "${TXN_NAME} Transaction Response Time Distribution" noenhanced
 set output "${OUTPUTDIR}/t${TXN_TAG}-distribution.png"
 set ylabel "Response Time (seconds)"

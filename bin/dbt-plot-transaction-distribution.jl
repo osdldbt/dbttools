@@ -74,10 +74,12 @@ function plot(df, params)
             x={
                 :ctime,
                 title="Elapsed Time (minutes)",
+                scale={zero=true},
             },
             y={
                 :response_time,
-                title="Response Time (seconds)"
+                title="Response Time (seconds)",
+                scale={zero=true},
             },
         )
     filename = params["outputdir"] * "/t" * params["txn_tag"] *

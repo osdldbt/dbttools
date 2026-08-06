@@ -52,6 +52,7 @@ vX.Y.Z (YYYY-MM-DD)
 - Validate DBTLANG before searching for the interpreter, so a value that
   happens to name an executable, such as the r of littler, is reported as
   an unsupported language instead of failing on a truncated script name
+- Anchor both axes at zero in the gnuplot and Julia plot scripts
 
 v0.5.1 (2024-07-31)
 

@@ -150,6 +150,8 @@ set datafile separator "|"
 set terminal pngcairo size $SIZE
 set xlabel "Elapsed Time (minutes)"
 set grid
+set xrange [0:*]
+set yrange [0:*]
 set title "${TXN_NAME} Transaction Rate" noenhanced
 set output "${OUTPUTDIR}/t${TXN_TAG}-transaction-rate.png"
 set ylabel "Transactions per ${YLABEL}"

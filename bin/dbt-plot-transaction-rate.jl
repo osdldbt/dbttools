@@ -83,10 +83,12 @@ function plot(df, params)
             x={
                 :ctime,
                 title="Elapsed Time (minutes)",
+                scale={zero=true},
             },
             y={
                 :count,
                 title="Transactions per " * params["rate_unit"],
+                scale={zero=true},
             },
         )
     filename = params["outputdir"] * "/t" * params["txn_tag"] *
