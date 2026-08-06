@@ -13,6 +13,14 @@ usage()
 	echo "Usage:"
 	echo "  $(basename "$0") TYPE [OPTION]"
 	echo
+	echo "Set DBTLANG to 'gnuplot', 'R' or 'julia' to select the plotting"
+	echo "language, or leave it unset to autodetect in that order."
+	echo
+}
+
+error() {
+	echo "ERROR: $*" >&2
+	exit 1
 }
 
 if [ "$1" = "-h" ]; then
@@ -34,23 +42,29 @@ if [ "$DBTLANG" = "" ]; then
 	elif command -v "julia" > /dev/null 2>&1; then
 		DBTLANG="julia"
 	else
-		echo "ERROR: 'gnuplot', 'julia' nor 'R' detected for post processing"
-		exit 1
-	fi
-else
-	if ! command -v "$DBTLANG" > /dev/null 2>&1; then
-		echo "ERROR: $DBTLANG not detected, set to 'gnuplot', 'R' or 'julia', "
-		echo "or unset to let the script autodetect"
-		exit 1
+		error "'gnuplot', 'julia' nor 'R' detected for post processing"
 	fi
 fi
 
-if [ "$DBTLANG" = "gnuplot" ]; then
+case "$DBTLANG" in
+gnuplot)
 	PPEXT="gnuplot"
-elif [ "$DBTLANG" = "julia" ]; then
+	;;
+julia)
 	PPEXT="jl"
-elif [ "$DBTLANG" = "R" ]; then
+	;;
+R)
 	PPEXT="r"
+	;;
+*)
+	error "DBTLANG is '${DBTLANG}', set it to 'gnuplot', 'R' or 'julia'," \
+			"or unset it to let the script autodetect"
+	;;
+esac
+
+if ! command -v "$DBTLANG" > /dev/null 2>&1; then
+	error "$DBTLANG not detected, install it or set DBTLANG to another" \
+			"of 'gnuplot', 'R' or 'julia'"
 fi
 
 MODULE="$1"
@@ -59,8 +73,7 @@ shift
 PSCRIPT="dbt-plot-${MODULE}.${PPEXT}"
 
 if ! command -v "$PSCRIPT" > /dev/null 2>&1; then
-	echo "ERROR: $PSCRIPT not found in PATH"
-	exit 1
+	error "$PSCRIPT not found in PATH"
 fi
 
 if [ "$DBTLANG" = "julia" ]; then
@@ -68,9 +81,8 @@ if [ "$DBTLANG" = "julia" ]; then
 	# interfere with whatever packages already exist.
 	DBT_JULIA_DEPOT_PATH="${XDG_CACHE_HOME:-${HOME}/.cache}/dbttools/julia"
 	if ! mkdir -p "${DBT_JULIA_DEPOT_PATH}"; then
-		echo "ERROR: could not create Julia depot ${DBT_JULIA_DEPOT_PATH}"
-		echo "set JULIA_DEPOT_PATH to a writable directory"
-		exit 1
+		error "could not create Julia depot ${DBT_JULIA_DEPOT_PATH}," \
+				"set JULIA_DEPOT_PATH to a writable directory"
 	fi
 	if [ "$JULIA_DEPOT_PATH" = "" ]; then
 		export JULIA_DEPOT_PATH="${DBT_JULIA_DEPOT_PATH}"
@@ -87,8 +99,7 @@ if [ "$DBTLANG" = "julia" ]; then
 		if ! julia -q -e "${INSTALLED}" > /dev/null 2>&1; then
 			echo "Installing Julia package ${PACKAGE}..."
 			if ! julia -q -e "import Pkg; Pkg.add(\"${PACKAGE}\")"; then
-				echo "ERROR: failed to install Julia package ${PACKAGE}"
-				exit 1
+				error "failed to install Julia package ${PACKAGE}"
 			fi
 		fi
 	done

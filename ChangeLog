@@ -49,6 +49,9 @@ vX.Y.Z (YYYY-MM-DD)
 - Look for charts only in the directory the report links are relative to,
   and skip transactions and metrics with no chart, so the PostgreSQL
   reports no longer link to files that are not there
+- Validate DBTLANG before searching for the interpreter, so a value that
+  happens to name an executable, such as the r of littler, is reported as
+  an unsupported language instead of failing on a truncated script name
 
 v0.5.1 (2024-07-31)
 
