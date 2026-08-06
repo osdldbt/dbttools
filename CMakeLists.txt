@@ -17,7 +17,7 @@ configure_file(
     ${CMAKE_BINARY_DIR}/dbt-version
 )
 
-INSTALL(PROGRAMS 
+INSTALL(PROGRAMS
         ${CMAKE_BINARY_DIR}/dbt-version
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot
         ${CMAKE_SOURCE_DIR}/bin/dbt-plot-transaction-distribution.gnuplot
