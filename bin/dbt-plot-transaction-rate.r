@@ -76,8 +76,9 @@ df\$ctime <- floor((df\$ctime - starttime) / 60)
 df <- df[df\$txn == "${TXN_TAG}",]
 
 # Aggregate counts per minute; for tps, average each minute over the
-# seconds it actually covers.
-df <- aggregate(count ~ txn + ctime, df, length)
+# seconds it actually covers.  na.pass keeps rows whose status column is
+# NA, which the formula interface would otherwise drop before counting.
+df <- aggregate(count ~ txn + ctime, df, length, na.action = na.pass)
 if ("${RATE}" == "tps") {
     df\$count <- df\$count / pmin(60, duration - df\$ctime * 60)
 }

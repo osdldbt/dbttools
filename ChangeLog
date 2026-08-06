@@ -30,6 +30,8 @@ vX.Y.Z (YYYY-MM-DD)
 - Detect installed Julia packages by querying the project dependencies rather
   than counting Pkg.status output lines, which reinstalled a package on every
   run once a newer version became available
+- Count every transaction in the R transaction rate plot script, instead of
+  dropping those whose status column is empty
 
 v0.5.1 (2024-07-31)
 
