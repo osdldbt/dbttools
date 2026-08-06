@@ -10,6 +10,7 @@ SIZE="1600,1000"
 
 # Only remove paths this script created.  The trap is in place before
 # these are assigned, so an empty value means there is nothing to do.
+# shellcheck disable=SC2317  # invoked by the EXIT trap below
 cleanup() {
 	if [ -n "${WORKDIR}" ]; then
 		rm -rf "${WORKDIR}"
@@ -19,7 +20,11 @@ cleanup() {
 	fi
 }
 
-trap 'cleanup; exit 1' INT QUIT ABRT TERM
+# Clean up on every exit path, including the error exits below.  The
+# signal handlers only exit: that runs the EXIT trap, which does the
+# removal, so there is exactly one cleanup path.
+trap cleanup EXIT
+trap 'exit 1' HUP INT QUIT ABRT TERM
 
 if [ $# -lt 6 ]; then
 	echo "$(basename "${0}") is the DBT transaction rate plotter"
@@ -134,7 +139,5 @@ set ylabel "Transactions per ${YLABEL}"
 set key off
 plot datafile using 1:2 notitle with linespoints
 EOF
-
-cleanup
 
 exit 0

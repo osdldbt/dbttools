@@ -34,6 +34,9 @@ vX.Y.Z (YYYY-MM-DD)
   dropping those whose status column is empty
 - Stop the gnuplot transaction rate plot script from removing the caller's
   temporary directory when interrupted early
+- Remove temporary files on every exit path in the gnuplot plot scripts,
+  including on hangup, and report the gnuplot exit status from the
+  transaction distribution plot script
 
 v0.5.1 (2024-07-31)
 

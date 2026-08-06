@@ -10,13 +10,18 @@ SIZE="1600,1000"
 
 # Only remove paths this script created.  The trap is in place before
 # DATAFILE is assigned, so an empty value means there is nothing to do.
+# shellcheck disable=SC2317  # invoked by the EXIT trap below
 cleanup() {
 	if [ -n "${DATAFILE}" ]; then
 		rm -f "${DATAFILE}"
 	fi
 }
 
-trap 'cleanup; exit 1' INT QUIT ABRT TERM
+# Clean up on every exit path, including the error exits below.  The
+# signal handlers only exit: that runs the EXIT trap, which does the
+# removal, so there is exactly one cleanup path.
+trap cleanup EXIT
+trap 'exit 1' HUP INT QUIT ABRT TERM
 
 if [ $# -lt 5 ]; then
 	echo "$(basename "${0}") is the DBT transaction distribution plotter"
@@ -73,5 +78,3 @@ set ylabel "Response Time (seconds)"
 set key off
 plot datafile using 1:2 notitle with points
 EOF
-
-cleanup
