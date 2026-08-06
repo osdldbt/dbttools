@@ -37,6 +37,9 @@ vX.Y.Z (YYYY-MM-DD)
 - Remove temporary files on every exit path in the gnuplot plot scripts,
   including on hangup, and report the gnuplot exit status from the
   transaction distribution plot script
+- Report the gnuplot exit status from the transaction rate plot script as
+  well, which always exited successfully and so hid every failure, and
+  check the status of the sqlite3 calls that stage the log data
 
 v0.5.1 (2024-07-31)
 

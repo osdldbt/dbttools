@@ -8,6 +8,11 @@
 
 SIZE="1600,1000"
 
+error() {
+	echo "ERROR: $*" >&2
+	exit 1
+}
+
 # Only remove paths this script created.  The trap is in place before
 # these are assigned, so an empty value means there is nothing to do.
 # shellcheck disable=SC2317  # invoked by the EXIT trap below
@@ -55,8 +60,7 @@ shift
 
 mkdir -p "${OUTPUTDIR}"
 if [ ! -d "${OUTPUTDIR}" ]; then
-	echo "ERROR: Failed to create directory ${OUTPUTDIR}"
-	exit 1
+	error "Failed to create directory ${OUTPUTDIR}"
 fi
 
 if [ "${RATE}" = "tpm" ]; then
@@ -64,14 +68,17 @@ if [ "${RATE}" = "tpm" ]; then
 elif [ "${RATE}" = "tps" ]; then
 	YLABEL="Second"
 else
-	echo "ERROR: unknown rate ${RATE}"
-	exit 1
+	error "unknown rate ${RATE}"
+fi
+
+if ! command -v sqlite3 > /dev/null 2>&1; then
+	error "sqlite3 not found in PATH, it is required to aggregate the logs"
 fi
 
 WORKDIR=$(mktemp -d)
 DBFILE="${WORKDIR}/dbttools.db"
 
-sqlite3 "${DBFILE}" << EOF
+if ! sqlite3 "${DBFILE}" << EOF
 CREATE TABLE mix(
     "time" INTEGER
   , "txn" TEXT
@@ -82,49 +89,55 @@ CREATE TABLE mix(
   , "d_id" INTEGER
 );
 EOF
+then
+	error "could not create the staging table in ${DBFILE}"
+fi
 
 for FILE in "${@}"; do
-	sqlite3 "${DBFILE}" <<- EOF
+	if ! sqlite3 "${DBFILE}" <<- EOF
 		.mode csv
 		.import "$FILE" mix
 	EOF
+	then
+		error "could not import ${FILE}"
+	fi
 done
 
 DATAFILE=$(mktemp)
 
-sqlite3 "${DBFILE}" <<- EOF
+if ! sqlite3 "${DBFILE}" <<- EOF
 	CREATE INDEX mix_time_txn
 	ON mix (time,txn);
 EOF
+then
+	error "could not index the staging table in ${DBFILE}"
+fi
 
 # Bucket by minutes elapsed since the earliest event in the logs, per the
 # R and Julia versions of this script.  For tps, average each minute over
 # the seconds it actually covers so a partial trailing minute is not
 # undercounted.
 if [ "${RATE}" = "tpm" ]; then
-	sqlite3 "${DBFILE}" <<- EOF > "${DATAFILE}"
-		SELECT (time - (SELECT min(time) FROM mix)) / 60, count(time)
-		FROM mix
-		WHERE txn = '${TXN_TAG}'
-		GROUP BY 1
-		ORDER BY 1;
-	EOF
-elif [ "${RATE}" = "tps" ]; then
-	sqlite3 "${DBFILE}" <<- EOF > "${DATAFILE}"
-		SELECT bucket
-		     , cast(cnt AS REAL) / min(60, duration - bucket * 60)
-		FROM (
-		    SELECT (time - (SELECT min(time) FROM mix)) / 60 AS bucket
-		         , count(time) AS cnt
-		    FROM mix
-		    WHERE txn = '${TXN_TAG}'
-		    GROUP BY 1
-		), (SELECT max(time) - min(time) + 1 AS duration FROM mix)
-		ORDER BY bucket;
-	EOF
+	QUERY="SELECT (time - (SELECT min(time) FROM mix)) / 60, count(time)
+FROM mix
+WHERE txn = '${TXN_TAG}'
+GROUP BY 1
+ORDER BY 1;"
 else
-	echo "ERROR: unknown rate ${RATE}"
-	exit 1
+	QUERY="SELECT bucket
+     , cast(cnt AS REAL) / min(60, duration - bucket * 60)
+FROM (
+    SELECT (time - (SELECT min(time) FROM mix)) / 60 AS bucket
+         , count(time) AS cnt
+    FROM mix
+    WHERE txn = '${TXN_TAG}'
+    GROUP BY 1
+), (SELECT max(time) - min(time) + 1 AS duration FROM mix)
+ORDER BY bucket;"
+fi
+
+if ! sqlite3 "${DBFILE}" "${QUERY}" > "${DATAFILE}"; then
+	error "could not aggregate the ${RATE} data"
 fi
 
 gnuplot << EOF
@@ -139,5 +152,3 @@ set ylabel "Transactions per ${YLABEL}"
 set key off
 plot datafile using 1:2 notitle with linespoints
 EOF
-
-exit 0
