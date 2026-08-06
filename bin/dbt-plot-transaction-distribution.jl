@@ -27,7 +27,6 @@ exec julia --color=no --startup-file=no "$0" "$@"
 
 using CSV
 using DataFrames
-using Statistics
 using VegaLite
 
 function load(filenames, params)
