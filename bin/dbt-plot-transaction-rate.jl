@@ -74,8 +74,8 @@ function plot(df, params)
     p = df |>
         @vlplot(
             title=params["txn_name"] * " Transaction Rate",
-            width=1200,
-            height=800,
+            width=1600,
+            height=1000,
             mark={
                 type="line",
                 point=true,

@@ -89,8 +89,8 @@ if ("${RATE}" == "tps") {
 }
 
 bitmap("${OUTPUTDIR}/t${TXN_TAG}-transaction-rate.png",
-       type="png16m", units="px", width=1280, height=800, res=150, taa=4,
-       gaa=4)
+       type="png16m", units="px", width=1600, height=1000, res=187.5,
+       taa=4, gaa=4)
 plot(df\$ctime, df\$count, xlim=c(0, max(df\$ctime)),
      ylim=c(0, max(df\$count)), type = "b", col = color[${COLOR}],
      main="$TXN_NAME Transaction Rate",

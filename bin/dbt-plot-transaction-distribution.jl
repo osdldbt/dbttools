@@ -66,8 +66,8 @@ function plot(df, params)
         @vlplot(
             title=params["txn_name"] *
                   " Transaction Response Time Distribution",
-            width=1200,
-            height=800,
+            width=1600,
+            height=1000,
             mark={
                 type="point",
             },

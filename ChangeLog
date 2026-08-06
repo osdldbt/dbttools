@@ -53,6 +53,7 @@ vX.Y.Z (YYYY-MM-DD)
   happens to name an executable, such as the r of littler, is reported as
   an unsupported language instead of failing on a truncated script name
 - Anchor both axes at zero in the gnuplot and Julia plot scripts
+- Make all script plot to the same 1600x1000 image size
 
 v0.5.1 (2024-07-31)
 
